@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+backend/uploads/
+*.log
+
+# AI / treinamento
+docs/superpowers/
+.planning
+
+# Build artifacts
+frontend/tsconfig.tsbuildinfo

@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  :root {
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --gray-50: #f9fafb;
+    --color-white: #ffffff;
+    --color-black: #000000;
+
+    --clinical-50: #eff6ff;
+    --clinical-100: #dbeafe;
+    --clinical-200: #bfdbfe;
+    --clinical-500: #3b82f6;
+    --clinical-600: #2563eb;
+    --clinical-700: #1d4ed8;
+
+    --health-50: #ecfdf5;
+    --health-100: #d1fae5;
+    --health-500: #10b981;
+    --health-600: #059669;
+
+    --amber-50: #fffbeb;
+    --amber-100: #fef3c7;
+    --amber-500: #f59e0b;
+    --amber-600: #d97706;
+
+    --red-50: #fef2f2;
+    --red-500: #ef4444;
+    --red-600: #dc2626;
+    --red-700: #b91c1c;
+
+    --blue-50: #eff6ff;
+    --blue-600: #2563eb;
+    --blue-700: #1d4ed8;
+
+    --purple-50: #faf5ff;
+    --purple-600: #9333ea;
+
+    --bg-sidebar: var(--color-white);
+    --bg-header: var(--color-white);
+    --bg-card: var(--color-white);
+    --bg-input: var(--color-white);
+    --border: var(--slate-200);
+    --text-primary: var(--slate-800);
+    --text-secondary: var(--slate-500);
+    --text-muted: var(--slate-400);
+  }
+
+  .dark {
+    --slate-50: #0f172a;
+    --slate-100: #1e293b;
+    --slate-200: #334155;
+    --slate-300: #7a8ba0;
+    --slate-400: #8899aa;
+    --slate-500: #94a3b8;
+    --slate-600: #cbd5e1;
+    --slate-700: #e2e8f0;
+    --slate-800: #f1f5f9;
+    --slate-900: #f8fafc;
+    --gray-50: #1e293b;
+    --color-white: #1e293b;
+    --color-black: #000000;
+
+    --clinical-50: rgba(59, 130, 246, 0.25);
+    --clinical-100: rgba(59, 130, 246, 0.3);
+    --clinical-200: rgba(59, 130, 246, 0.4);
+    --clinical-500: #60a5fa;
+    --clinical-600: #93c5fd;
+    --clinical-700: #2563eb;
+
+    --health-50: rgba(16, 185, 129, 0.25);
+    --health-100: rgba(16, 185, 129, 0.3);
+    --health-500: #34d399;
+    --health-600: #34d399;
+
+    --amber-50: rgba(245, 158, 11, 0.25);
+    --amber-100: rgba(245, 158, 11, 0.3);
+    --amber-500: #fde68a;
+    --amber-600: #f59e0b;
+
+    --red-50: rgba(239, 68, 68, 0.25);
+    --red-500: #fca5a5;
+    --red-600: #fca5a5;
+    --red-700: #dc2626;
+
+    --blue-50: rgba(37, 99, 235, 0.25);
+    --blue-600: #60a5fa;
+    --blue-700: #3b82f6;
+
+    --purple-50: rgba(147, 51, 234, 0.25);
+    --purple-600: #a855f7;
+
+    --bg-sidebar: var(--color-white);
+    --bg-header: var(--color-white);
+    --bg-card: var(--color-white);
+    --bg-input: var(--slate-200);
+    --border: var(--slate-200);
+    --text-primary: var(--slate-800);
+    --text-secondary: var(--slate-500);
+    --text-muted: var(--slate-400);
+  }
+}
+
+@layer components {
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200;
+  }
+  .sidebar-item-active {
+    background: linear-gradient(135deg, var(--clinical-500), var(--clinical-600));
+    @apply text-white shadow-lg;
+  }
+  .sidebar-item-inactive {
+    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-800;
+  }
+  .card {
+    @apply rounded-2xl border p-6;
+    background-color: var(--color-white);
+    border-color: var(--slate-200);
+    color: var(--slate-800);
+  }
+  .btn-primary {
+    @apply text-white px-4 py-2.5 rounded-xl font-medium transition-colors duration-200 disabled:opacity-50;
+    background-color: var(--clinical-600);
+  }
+  .btn-primary:hover {
+    background-color: var(--clinical-700);
+  }
+  .btn-secondary {
+    @apply px-4 py-2.5 rounded-xl font-medium transition-colors duration-200;
+    background-color: var(--color-white);
+    color: var(--slate-700);
+    border: 1px solid var(--slate-200);
+  }
+  .btn-secondary:hover {
+    background-color: var(--slate-50);
+  }
+}
+
+body {
+  background-color: var(--slate-50);
+  color: var(--slate-800);
+}
+
+.dark .sidebar-item-active {
+  background: linear-gradient(135deg, var(--clinical-600), var(--clinical-500));
+}
+.dark .sidebar-item-inactive:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--slate-200);
+}
+
+.dark .hover\:bg-slate-50:hover {
+  background-color: var(--slate-200);
+}
+
+.dark ::placeholder {
+  color: var(--slate-500) !important;
+  opacity: 1;
+}
