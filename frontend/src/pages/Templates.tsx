@@ -6,17 +6,18 @@ import CreateDocumentModal from '../components/documents/CreateDocumentModal'
 
 interface Template { id: number; title: string; contentJson: any; sectorId: number; createdAt: string }
 
-const MOCK_TEMPLATES: Template[] = [
-  { id: 1, title: 'POP Padrão', contentJson: { text: '[Insira o procedimento aqui]' }, sectorId: 1, createdAt: new Date().toISOString() },
-  { id: 2, title: 'Relatório de Incidente', contentJson: { text: '## Relatório\n\n**Data:** \n**Envolvidos:** \n\n### Descrição\n\n' }, sectorId: 1, createdAt: new Date().toISOString() },
-]
-
 export default function Templates() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const navigate = useNavigate()
-  const [templates, setTemplates] = useState<Template[]>(MOCK_TEMPLATES)
+  const [templates, setTemplates] = useState<Template[]>([])
   const [showCreate, setShowCreate] = useState(false)
+
+  useEffect(() => {
+    api.get('/documents', { params: { isTemplate: true } }).then(({ data }) => {
+      setTemplates(data)
+    }).catch(() => {})
+  }, [])
 
   const createFromTemplate = (t: Template) => {
     navigate('/documentos', { state: { fromTemplate: t } })

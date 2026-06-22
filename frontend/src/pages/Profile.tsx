@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import api from '../lib/api'
 
 export default function Profile() {
   const { user, updateUser } = useAuth()
@@ -34,15 +35,16 @@ export default function Profile() {
     setSaving(true)
     setMessage('')
     try {
-      await new Promise(r => setTimeout(r, 500))
-      if (avatarFile && user) {
-        localStorage.setItem(`avatar_${user.id}`, avatarFile)
-        updateUser({ avatarUrl: avatarFile })
-      }
+      await api.put('/profile', {
+        name: form.name,
+        email: form.email,
+        currentPassword: form.currentPassword || undefined,
+        newPassword: form.newPassword || undefined,
+      })
       updateUser({ name: form.name, email: form.email })
       setMessage('Perfil atualizado com sucesso!')
-    } catch {
-      setMessage('Erro ao atualizar perfil')
+    } catch (err: any) {
+      setMessage(err?.response?.data?.error || 'Erro ao atualizar perfil')
     } finally {
       setSaving(false)
     }

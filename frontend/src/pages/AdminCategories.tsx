@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AdminTabs from '../components/admin/AdminTabs'
 import CategoryFormModal from '../components/admin/CategoryFormModal'
+import api from '../lib/api'
 
 interface Category {
   id: number; name: string; description: string | null
@@ -13,15 +14,6 @@ const MOCK_SECTORS = [
   { id: 2, name: 'Enfermagem' },
   { id: 3, name: 'Medicina' },
   { id: 4, name: 'Administrativo' },
-]
-
-const MOCK_CATEGORIES: Category[] = [
-  { id: 1, name: 'POPs', description: 'Procedimentos Operacionais Padrão', parentId: null, sectorId: null },
-  { id: 2, name: 'Manuais', description: 'Manuais técnicos', parentId: null, sectorId: null },
-  { id: 3, name: 'Protocolos', description: 'Protocolos clínicos', parentId: null, sectorId: null },
-  { id: 4, name: 'Enfermagem', description: 'POPs de enfermagem', parentId: 1, sectorId: 2 },
-  { id: 5, name: 'Medicina', description: 'POPs de medicina', parentId: 1, sectorId: 3 },
-  { id: 6, name: 'CME', description: 'Central de Material Esterilizado', parentId: 2, sectorId: null },
 ]
 
 function buildTree(cats: Category[]): (Category & { children: Category[] })[] {
@@ -38,33 +30,38 @@ function buildTree(cats: Category[]): (Category & { children: Category[] })[] {
 }
 
 export default function AdminCategories() {
-  const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES)
+  const [categories, setCategories] = useState<Category[]>([])
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
 
+  const load = () => {
+    api.get('/categories').then(({ data }) => setCategories(data)).catch(() => {})
+  }
+
+  useEffect(load, [])
+
   const tree = buildTree(categories)
 
-  const handleSave = (data: { name: string; description?: string; parentId?: number; sectorId?: number }) => {
-    if (editing) {
-      setCategories(prev => prev.map(c => c.id === editing.id ? { ...c, ...data } : c))
-    } else {
-      const newCat: Category = {
-        id: Math.max(...categories.map(c => c.id), 0) + 1,
-        name: data.name,
-        description: data.description || null,
-        parentId: data.parentId || null,
-        sectorId: data.sectorId || null,
+  const handleSave = async (data: { name: string; description?: string; parentId?: number; sectorId?: number }) => {
+    try {
+      if (editing) {
+        await api.put(`/categories/${editing.id}`, data)
+      } else {
+        await api.post('/categories', data)
       }
-      setCategories(prev => [...prev, newCat])
-    }
+      load()
+    } catch {}
     setShowModal(false)
     setEditing(null)
   }
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     const hasChildren = categories.some(c => c.parentId === id)
     if (hasChildren) { alert('Remova as subpastas antes de excluir esta pasta.'); return }
-    setCategories(prev => prev.filter(c => c.id !== id))
+    try {
+      await api.delete(`/categories/${id}`)
+      load()
+    } catch {}
   }
 
   const sectorName = (id: number | null) => id ? MOCK_SECTORS.find(s => s.id === id)?.name || '-' : 'Global'

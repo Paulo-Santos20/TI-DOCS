@@ -15,9 +15,12 @@ router.get('/', asyncHandler(async (req: AuthRequest, res) => {
   const isAdmin = req.user!.role === 'admin'
   const sectorFilter = isAdmin ? undefined : req.user!.sectorId
 
-  let conditions = or(
-    ilike(documents.title, `%${q}%`),
-    sql`${documents.contentJson}->>'text' ILIKE ${`%${q}%`}`,
+  let conditions = and(
+    eq(documents.isTemplate, false),
+    or(
+      ilike(documents.title, `%${q}%`),
+      sql`${documents.contentJson}->>'text' ILIKE ${`%${q}%`}`,
+    ),
   )
 
   if (sectorFilter) {

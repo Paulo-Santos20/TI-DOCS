@@ -1,36 +1,36 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AdminTabs from '../components/admin/AdminTabs'
 import UserFormModal from '../components/admin/UserFormModal'
+import api from '../lib/api'
 
 interface User { id: number; name: string; email: string; role: string; sectorName: string; isActive: boolean }
-
-const MOCK_SECTORS = [
-  { id: 1, name: 'TI' },
-  { id: 2, name: 'Enfermagem' },
-  { id: 3, name: 'Medicina' },
-  { id: 4, name: 'Administrativo' },
-]
+interface Sector { id: number; name: string }
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState<User[]>([
-    { id: 1, name: 'Administrador', email: 'admin@tidocs.com', role: 'admin', sectorName: 'TI', isActive: true },
-    { id: 2, name: 'Maria Silva', email: 'maria@tidocs.com', role: 'user', sectorName: 'Enfermagem', isActive: true },
-    { id: 3, name: 'Carlos Santos', email: 'carlos@tidocs.com', role: 'user', sectorName: 'Medicina', isActive: true },
-  ])
+  const [users, setUsers] = useState<User[]>([])
+  const [sectors, setSectors] = useState<Sector[]>([])
   const [showModal, setShowModal] = useState(false)
 
-  const handleCreate = (data: { name: string; email: string; role: string; sectorId: number }) => {
-    const sector = MOCK_SECTORS.find(s => s.id === data.sectorId)
-    const newUser: User = {
-      id: users.length + 1,
-      name: data.name,
-      email: data.email,
-      role: data.role,
-      sectorName: sector?.name || '',
-      isActive: true,
-    }
-    setUsers(prev => [...prev, newUser])
+  const load = () => {
+    api.get('/users').then(({ data }) => setUsers(data)).catch(() => {})
+    api.get('/sectors').then(({ data }) => setSectors(data)).catch(() => {})
+  }
+
+  useEffect(load, [])
+
+  const handleCreate = async (data: { name: string; email: string; password: string; role: string; sectorId: number }) => {
+    try {
+      await api.post('/users', data)
+      load()
+    } catch {}
     setShowModal(false)
+  }
+
+  const handleToggleActive = async (id: number, isActive: boolean) => {
+    try {
+      await api.patch(`/users/${id}/status`, { isActive: !isActive })
+      load()
+    } catch {}
   }
 
   return (
@@ -56,6 +56,7 @@ export default function AdminUsers() {
               <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Setor</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Permissão</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Status</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -79,6 +80,16 @@ export default function AdminUsers() {
                     {user.isActive ? 'Ativo' : 'Inativo'}
                   </span>
                 </td>
+                <td className="px-6 py-4">
+                  <button
+                    onClick={() => handleToggleActive(user.id, user.isActive)}
+                    className={`text-xs font-medium transition-colors ${
+                      user.isActive ? 'text-red-500 hover:text-red-700' : 'text-health-600 hover:text-health-700'
+                    }`}
+                  >
+                    {user.isActive ? 'Desativar' : 'Ativar'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -87,7 +98,7 @@ export default function AdminUsers() {
 
       {showModal && (
         <UserFormModal
-          sectors={MOCK_SECTORS}
+          sectors={sectors}
           onSave={handleCreate}
           onClose={() => setShowModal(false)}
         />

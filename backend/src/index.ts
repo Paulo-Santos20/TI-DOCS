@@ -23,9 +23,12 @@ import profileRoutes from './routes/profile.routes'
 import auditRoutes from './routes/audit.routes'
 import settingsRoutes from './routes/settings.routes'
 import searchRoutes from './routes/search.routes'
+import seedRoutes from './routes/seed.routes'
+import reportRoutes from './routes/reports.routes'
 
 const app = express()
 
+app.set('trust proxy', 1)
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }))
 app.use(express.json({ limit: '10mb' }))
@@ -66,6 +69,8 @@ app.use('/api/profile', profileRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/search', searchRoutes)
+app.use('/api/seed', seedRoutes)
+app.use('/api/reports', reportRoutes)
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }))
 

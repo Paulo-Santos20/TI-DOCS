@@ -19,6 +19,9 @@ npm install
 npm --prefix backend install
 npm --prefix frontend install
 
+echo "Generating database migrations..."
+npm --prefix backend run db:generate
+
 echo "Running database migrations..."
 npm --prefix backend run db:migrate
 

@@ -1,9 +1,13 @@
+import 'dotenv/config'
 import bcrypt from 'bcryptjs'
 import { db, connection } from '../config/database'
-import { sectors, users } from './schema'
+import { sectors, users, systemConfigs } from './schema'
 import { eq } from 'drizzle-orm'
 
-async function main() {
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@tidocs.com'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
+
+export async function main() {
   console.log('Seeding database...')
 
   const existingSectors = await db.select().from(sectors)
@@ -30,14 +34,28 @@ async function main() {
   }
 
   if (existingUsers.length === 0) {
-    const hash = await bcrypt.hash('admin123', 10)
+    const hash = await bcrypt.hash(ADMIN_PASSWORD, 10)
     await db.insert(users).values({
       name: 'Administrador',
-      email: 'admin@tidocs.com',
+      email: ADMIN_EMAIL,
       passwordHash: hash,
       role: 'admin',
       sectorId: sectorMap['TI'],
     })
+
+    const userHash = await bcrypt.hash('user123', 10)
+    await db.insert(users).values({
+      name: 'Usuário',
+      email: 'user@tidocs.com',
+      passwordHash: userHash,
+      role: 'user',
+      sectorId: sectorMap['Enfermagem'],
+    })
+
+    await db.insert(systemConfigs).values([
+      { key: 'app_name', value: 'TI Docs' },
+      { key: 'maintenance_mode', value: 'false' },
+    ])
   }
 
   console.log('Seed complete.')

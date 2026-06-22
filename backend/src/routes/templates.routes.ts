@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { authMiddleware, requireRole } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
-import { asyncHandler } from '../lib/async-handler'
+import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import { db } from '../config/database'
 import { documents } from '../db/schema'
 import { eq, and, desc } from 'drizzle-orm'
@@ -34,16 +34,23 @@ router.post('/', requireRole('admin'), validate(createSchema), asyncHandler(asyn
   res.status(201).json(tmpl)
 }))
 
-router.put('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
+const templateSchema = z.object({
+  title: z.string().min(3),
+  contentJson: z.any().optional(),
+})
+
+router.put('/:id', requireRole('admin'), validate(templateSchema), asyncHandler(async (req, res) => {
+  const id = parseIdParam(req.params.id, 'ID do template')
   const [updated] = await db.update(documents).set({
     title: req.body.title, contentJson: req.body.contentJson,
-  }).where(and(eq(documents.id, parseInt(req.params.id)), eq(documents.isTemplate, true))).returning()
+  }).where(and(eq(documents.id, id), eq(documents.isTemplate, true))).returning()
   res.json(updated)
 }))
 
 router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
+  const id = parseIdParam(req.params.id, 'ID do template')
   await db.delete(documents).where(and(
-    eq(documents.id, parseInt(req.params.id)), eq(documents.isTemplate, true),
+    eq(documents.id, id), eq(documents.isTemplate, true),
   ))
   res.json({ deleted: true })
 }))

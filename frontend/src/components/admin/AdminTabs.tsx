@@ -5,6 +5,9 @@ const tabs = [
   { path: '/admin/usuarios', label: 'Usuários', icon: '👥' },
   { path: '/admin/setores', label: 'Setores', icon: '🏢' },
   { path: '/admin/categorias', label: 'Categorias', icon: '📁' },
+  { path: '/admin/atribuicoes', label: 'Atribuições', icon: '📋' },
+  { path: '/admin/auditoria', label: 'Auditoria', icon: '📝' },
+  { path: '/admin/configuracoes', label: 'Configurações', icon: '⚙️' },
 ]
 
 export default function AdminTabs() {

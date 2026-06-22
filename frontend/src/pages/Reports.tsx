@@ -1,99 +1,46 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import api from '../lib/api'
 import ReportFilters, { FilterState } from '../components/reports/ReportFilters'
 import ExportButton from '../components/reports/ExportButton'
 
 interface DocProgress {
-  title: string
-  sector: string
-  percentage: number
-  lastAccess: string | null
-  completed: boolean
+  title: string; sector: string; percentage: number
+  lastAccess: string | null; completed: boolean
 }
 
 interface UserDetail {
-  name: string
-  sector: string
-  lastAccess: string
-  totalProgress: number
-  documents: DocProgress[]
+  name: string; sector: string; lastAccess: string
+  totalProgress: number; documents: DocProgress[]
 }
 
-const ALL_USERS: UserDetail[] = [
-  {
-    name: 'Maria Silva', sector: 'Enfermagem',
-    lastAccess: '2026-06-17T14:30:00', totalProgress: 100,
-    documents: [
-      { title: 'POP-023: Curativos Especiais', sector: 'Enfermagem', percentage: 100, lastAccess: '2026-06-15T09:00:00', completed: true },
-      { title: 'POP-045: Segurança do Paciente', sector: 'Enfermagem', percentage: 100, lastAccess: '2026-06-14T11:20:00', completed: true },
-      { title: 'Manual CME - Instrumentais', sector: 'Medicina', percentage: 100, lastAccess: '2026-06-10T16:45:00', completed: true },
-      { title: 'POP-012: Higienização', sector: 'Enfermagem', percentage: 100, lastAccess: '2026-06-01T08:15:00', completed: true },
-      { title: 'Protocolo de Acesso Vascular', sector: 'Medicina', percentage: 100, lastAccess: '2026-05-28T10:30:00', completed: true },
-      { title: 'POP-034: Administração', sector: 'Administrativo', percentage: 100, lastAccess: '2026-05-20T13:00:00', completed: true },
-    ],
-  },
-  {
-    name: 'Carlos Santos', sector: 'Medicina',
-    lastAccess: '2026-06-16T10:15:00', totalProgress: 60,
-    documents: [
-      { title: 'POP-023: Curativos Especiais', sector: 'Enfermagem', percentage: 100, lastAccess: '2026-06-12T14:00:00', completed: true },
-      { title: 'POP-045: Segurança do Paciente', sector: 'Enfermagem', percentage: 80, lastAccess: '2026-06-10T09:30:00', completed: false },
-      { title: 'Manual CME - Instrumentais', sector: 'Medicina', percentage: 100, lastAccess: '2026-06-08T11:00:00', completed: true },
-      { title: 'POP-012: Higienização', sector: 'Enfermagem', percentage: 60, lastAccess: '2026-06-05T15:20:00', completed: false },
-      { title: 'Protocolo de Acesso Vascular', sector: 'Medicina', percentage: 100, lastAccess: '2026-06-16T10:15:00', completed: true },
-      { title: 'POP-034: Administração', sector: 'Administrativo', percentage: 20, lastAccess: '2026-05-30T08:00:00', completed: false },
-    ],
-  },
-  {
-    name: 'Administrador', sector: 'TI',
-    lastAccess: '2026-06-17T08:00:00', totalProgress: 80,
-    documents: [
-      { title: 'POP-023: Curativos Especiais', sector: 'Enfermagem', percentage: 100, lastAccess: '2026-06-15T09:00:00', completed: true },
-      { title: 'POP-045: Segurança do Paciente', sector: 'Enfermagem', percentage: 100, lastAccess: '2026-06-14T11:20:00', completed: true },
-      { title: 'Manual CME - Instrumentais', sector: 'Medicina', percentage: 100, lastAccess: '2026-06-10T16:45:00', completed: true },
-      { title: 'POP-012: Higienização', sector: 'Enfermagem', percentage: 100, lastAccess: '2026-06-01T08:15:00', completed: true },
-      { title: 'Protocolo de Acesso Vascular', sector: 'Medicina', percentage: 100, lastAccess: '2026-05-28T10:30:00', completed: true },
-      { title: 'POP-034: Administração', sector: 'Administrativo', percentage: 0, lastAccess: null, completed: false },
-    ],
-  },
-  {
-    name: 'Ana Costa', sector: 'Administrativo',
-    lastAccess: '2026-06-15T16:00:00', totalProgress: 30,
-    documents: [
-      { title: 'POP-023: Curativos Especiais', sector: 'Enfermagem', percentage: 40, lastAccess: '2026-06-10T09:00:00', completed: false },
-      { title: 'POP-045: Segurança do Paciente', sector: 'Enfermagem', percentage: 20, lastAccess: '2026-06-05T14:30:00', completed: false },
-      { title: 'Manual CME - Instrumentais', sector: 'Medicina', percentage: 50, lastAccess: '2026-06-03T11:00:00', completed: false },
-      { title: 'POP-012: Higienização', sector: 'Enfermagem', percentage: 10, lastAccess: '2026-06-01T08:00:00', completed: false },
-      { title: 'Protocolo de Acesso Vascular', sector: 'Medicina', percentage: 0, lastAccess: null, completed: false },
-      { title: 'POP-034: Administração', sector: 'Administrativo', percentage: 60, lastAccess: '2026-06-15T16:00:00', completed: false },
-    ],
-  },
-]
+interface ReportData {
+  isAdmin: boolean; users: UserDetail[]; criticalDocuments: { title: string; sector: string; daysSinceUpdate: number }[]
+  popularDocuments: { title: string; count: number }[]; totalDocs: number
+}
 
-const ALL_SECTORS = ['TI', 'Enfermagem', 'Medicina', 'Administrativo']
-
-const MOCK_CRITICAL_DOCS = [
-  { title: 'POP-045: Segurança do Paciente', sector: 'Enfermagem', daysSinceUpdate: 120 },
-  { title: 'Manual CME - Instrumentais', sector: 'Medicina', daysSinceUpdate: 95 },
-  { title: 'Protocolo de Acesso Vascular', sector: 'Enfermagem', daysSinceUpdate: 91 },
-]
-
-const MOCK_POPULAR_DOCS = [
-  { title: 'POP-023: Curativos Especiais', count: 12 },
-  { title: 'Manual CME', count: 8 },
-  { title: 'POP-045: Segurança', count: 5 },
-]
+const emptyReport: ReportData = { isAdmin: false, users: [], criticalDocuments: [], popularDocuments: [], totalDocs: 0 }
 
 export default function Reports() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
 
+  const [data, setData] = useState<ReportData>(emptyReport)
   const [filters, setFilters] = useState<FilterState>({
-    sector: 'all',
-    person: 'all',
-    period: '30d',
-    status: 'all',
+    sector: 'all', person: 'all', period: '30d', status: 'all',
   })
+
+  useEffect(() => {
+    api.get('/reports').then(({ data }) => setData(data)).catch(() => {})
+  }, [])
+
+  const sectors = useMemo(() => {
+    const s = new Set<string>()
+    for (const u of data.users) s.add(u.sector)
+    return Array.from(s).filter(Boolean)
+  }, [data.users])
+
+  const people = useMemo(() => data.users.map(u => u.name), [data.users])
 
   const isPeriodMatch = (iso: string | null, period: string) => {
     if (!iso || period === 'all') return true
@@ -115,38 +62,34 @@ export default function Reports() {
   )
 
   const filteredUsers = useMemo(() => {
-    return ALL_USERS
+    return data.users
       .filter(u =>
         (filters.sector === 'all' || u.sector === filters.sector) &&
         (filters.person === 'all' || u.name === filters.person)
       )
-      .map(u => ({
-        ...u,
-        documents: filterDocs(u.documents),
-      }))
-  }, [filters.sector, filters.person, filters.period, filters.status])
+      .map(u => ({ ...u, documents: filterDocs(u.documents) }))
+  }, [data.users, filters.sector, filters.person, filters.period, filters.status])
 
   const selectedPerson = filters.person !== 'all'
     ? (() => {
-        const p = ALL_USERS.find(u => u.name === filters.person)
+        const p = data.users.find(u => u.name === filters.person)
         return p ? { ...p, documents: filterDocs(p.documents) } : null
       })()
     : null
 
-  const filteredCritical = MOCK_CRITICAL_DOCS.filter(d =>
+  const filteredCritical = data.criticalDocuments.filter(d =>
     filters.sector === 'all' || d.sector === filters.sector
   )
 
-  const filteredPopular = MOCK_POPULAR_DOCS
+  const filteredPopular = data.popularDocuments
 
   const totalCompleted = filteredUsers.reduce((acc, u) => acc + u.documents.filter(d => d.completed).length, 0)
-  const totalDocs = 6
   const avgCompletion = filteredUsers.length > 0
     ? Math.round(filteredUsers.reduce((acc, u) => acc + u.totalProgress, 0) / filteredUsers.length)
     : 0
 
   const currentUserDetail = !isAdmin
-    ? ALL_USERS.find(u => u.name === user?.name) || null
+    ? data.users.find(u => u.name === user?.name) || null
     : null
 
   const formatDateTime = (iso: string | null) => {
@@ -208,8 +151,8 @@ export default function Reports() {
       </div>
 
       <ReportFilters
-        sectors={ALL_SECTORS}
-        people={ALL_USERS.map(u => u.name)}
+        sectors={sectors}
+        people={people}
         isAdmin={isAdmin}
         onFilter={setFilters}
       />
@@ -472,7 +415,7 @@ export default function Reports() {
                 />
               </div>
               <p className="text-sm text-slate-400 mt-2">
-                {currentUserDetail?.documents.filter(d => d.completed).length || 0} de {totalDocs} documentos concluídos
+                {currentUserDetail?.documents.filter(d => d.completed).length || 0} de {data.totalDocs} documentos concluídos
               </p>
             </div>
           </>

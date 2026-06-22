@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { authMiddleware, requireRole, AuthRequest } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
-import { asyncHandler } from '../lib/async-handler'
+import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import * as docService from '../services/document.service'
 
 const router = Router()
@@ -36,12 +36,14 @@ router.post('/', requireRole('admin'), validate(createSchema), asyncHandler(asyn
 }))
 
 router.put('/:id', requireRole('admin'), validate(updateSchema), asyncHandler(async (req, res) => {
-  const cat = await docService.updateCategory(parseInt(req.params.id), req.body)
+  const id = parseIdParam(req.params.id, 'ID da categoria')
+  const cat = await docService.updateCategory(id, req.body)
   res.json(cat)
 }))
 
 router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
-  const result = await docService.deleteCategory(parseInt(req.params.id))
+  const id = parseIdParam(req.params.id, 'ID da categoria')
+  const result = await docService.deleteCategory(id)
   res.json(result)
 }))
 

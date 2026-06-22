@@ -2,7 +2,8 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { authMiddleware, requireRole, AuthRequest } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
-import { asyncHandler } from '../lib/async-handler'
+import { asyncHandler, parseIdParam } from '../lib/async-handler'
+import { logAudit } from '../lib/audit'
 import * as docService from '../services/document.service'
 import { AppError } from '../middleware/error.middleware'
 
@@ -26,7 +27,8 @@ router.get('/', asyncHandler(async (req: AuthRequest, res) => {
 }))
 
 router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
-  const doc = await docService.getDocument(parseInt(req.params.id))
+  const id = parseIdParam(req.params.id, 'ID do documento')
+  const doc = await docService.getDocument(id)
   if (req.user!.role !== 'admin' && doc.sectorId !== req.user!.sectorId) {
     throw new AppError(403, 'Acesso negado a documentos de outro setor')
   }
@@ -35,40 +37,50 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
 
 router.post('/', requireRole('admin'), validate(createSchema), asyncHandler(async (req: AuthRequest, res) => {
   const doc = await docService.createDocument({ ...req.body, authorId: req.user!.userId })
+  await logAudit({ userId: req.user!.userId, action: 'create', entityType: 'document', entityId: doc.id, details: { title: doc.title } })
   res.status(201).json(doc)
 }))
 
 router.post('/:id/lock', requireRole('admin'), asyncHandler(async (req: AuthRequest, res) => {
-  const result = await docService.acquireLock(parseInt(req.params.id), req.user!.userId)
+  const id = parseIdParam(req.params.id, 'ID do documento')
+  const result = await docService.acquireLock(id, req.user!.userId)
   res.json(result)
 }))
 
-router.post('/:id/unlock', requireRole('admin'), asyncHandler(async (req, res) => {
-  const result = await docService.releaseLock(parseInt(req.params.id))
+router.post('/:id/unlock', requireRole('admin'), asyncHandler(async (req: AuthRequest, res) => {
+  const id = parseIdParam(req.params.id, 'ID do documento')
+  const result = await docService.releaseLock(id)
   res.json(result)
 }))
 
 router.put('/:id', requireRole('admin'), asyncHandler(async (req: AuthRequest, res) => {
-  const doc = await docService.updateDocument(parseInt(req.params.id), req.body, req.user!.userId)
+  const id = parseIdParam(req.params.id, 'ID do documento')
+  const doc = await docService.updateDocument(id, req.body, req.user!.userId)
+  await logAudit({ userId: req.user!.userId, action: 'update', entityType: 'document', entityId: doc.id })
   res.json(doc)
 }))
 
-router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
-  const result = await docService.deleteDocument(parseInt(req.params.id))
+router.delete('/:id', requireRole('admin'), asyncHandler(async (req: AuthRequest, res) => {
+  const id = parseIdParam(req.params.id, 'ID do documento')
+  const result = await docService.deleteDocument(id)
+  await logAudit({ userId: req.user!.userId, action: 'delete', entityType: 'document', entityId: id })
   res.json(result)
 }))
 
 router.patch('/:id/status', requireRole('admin'), asyncHandler(async (req: AuthRequest, res) => {
+  const id = parseIdParam(req.params.id, 'ID do documento')
   const { status } = req.body
-  if (!status || !['draft', 'published', 'archived'].includes(status)) {
-    throw new AppError(400, 'Status deve ser draft, published ou archived')
+  if (!status || !['draft', 'review', 'published', 'archived'].includes(status)) {
+    throw new AppError(400, 'Status deve ser draft, review, published ou archived')
   }
-  const doc = await docService.updateDocumentStatus(parseInt(req.params.id), status)
+  const doc = await docService.updateDocumentStatus(id, status)
+  await logAudit({ userId: req.user!.userId, action: 'status_change', entityType: 'document', entityId: id, details: { status } })
   res.json(doc)
 }))
 
 router.get('/:id/versions', asyncHandler(async (req, res) => {
-  const versions = await docService.getVersions(parseInt(req.params.id))
+  const id = parseIdParam(req.params.id, 'ID do documento')
+  const versions = await docService.getVersions(id)
   res.json(versions)
 }))
 

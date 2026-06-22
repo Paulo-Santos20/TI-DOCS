@@ -1,9 +1,11 @@
+
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin'
+import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import Toolbar from './Toolbar'
 
@@ -49,6 +51,11 @@ export default function LexicalEditor({ initialJson, onChange, placeholder = 'Di
             placeholder={<div className="absolute top-3 left-4 text-slate-400 pointer-events-none">{placeholder}</div>}
             ErrorBoundary={LexicalErrorBoundary}
           />
+          {onChange && (
+            <OnChangePlugin onChange={(editorState) => {
+              onChange(editorState.toJSON(), '')
+            }} />
+          )}
           <HistoryPlugin />
           <ListPlugin />
           <LinkPlugin />

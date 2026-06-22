@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { authMiddleware, AuthRequest } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
-import { asyncHandler } from '../lib/async-handler'
+import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import { db } from '../config/database'
 import { trainingProgress, documents } from '../db/schema'
 import { AppError } from '../middleware/error.middleware'
@@ -17,7 +17,7 @@ const completeSchema = z.object({
 })
 
 router.post('/documentos/:id/completar', validate(completeSchema), asyncHandler(async (req: AuthRequest, res) => {
-  const docId = parseInt(req.params.id)
+  const docId = parseIdParam(req.params.id, 'ID do documento')
   const userId = req.user!.userId
   const { status, score } = req.body
 
@@ -45,7 +45,7 @@ router.post('/documentos/:id/completar', validate(completeSchema), asyncHandler(
 }))
 
 router.get('/documentos/:id', asyncHandler(async (req: AuthRequest, res) => {
-  const docId = parseInt(req.params.id)
+  const docId = parseIdParam(req.params.id, 'ID do documento')
   const userId = req.user!.userId
 
   const [progress] = await db.select().from(trainingProgress)

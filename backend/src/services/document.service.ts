@@ -13,11 +13,10 @@ export async function listDocuments(sectorId?: number, categoryId?: number) {
   }).from(documents).leftJoin(sectors, eq(documents.sectorId, sectors.id))
     .orderBy(desc(documents.updatedAt))
 
-  const conditions: any[] = []
+  const conditions: any[] = [eq(documents.isTemplate, false)]
   if (sectorId) conditions.push(eq(documents.sectorId, sectorId))
   if (categoryId) conditions.push(eq(documents.categoryId, categoryId))
-  if (conditions.length > 0) return await query.where(and(...conditions))
-  return await query
+  return await query.where(and(...conditions))
 }
 
 export async function getDocument(id: number) {
@@ -47,7 +46,7 @@ export async function deleteDocument(docId: number) {
 }
 
 export async function updateDocumentStatus(docId: number, status: string) {
-  const validStatuses = ['draft', 'published', 'archived']
+  const validStatuses = ['draft', 'review', 'published', 'archived']
   if (!validStatuses.includes(status)) throw new AppError(400, 'Status inválido')
 
   const [doc] = await db.select().from(documents).where(eq(documents.id, docId)).limit(1)
@@ -84,6 +83,7 @@ export async function releaseLock(docId: number) {
 
 export async function updateDocument(docId: number, data: {
   title?: string; contentJson?: any; categoryId?: number
+  changeDescription?: string
 }, userId: number) {
   const [doc] = await db.select().from(documents).where(eq(documents.id, docId)).limit(1)
   if (!doc) throw new AppError(404, 'Documento não encontrado')
@@ -93,21 +93,32 @@ export async function updateDocument(docId: number, data: {
   if (data.contentJson !== undefined) allowedFields.contentJson = data.contentJson
   if (data.categoryId !== undefined) allowedFields.categoryId = data.categoryId
 
-  await db.transaction(async (tx) => {
-    await tx.insert(documentVersions).values({
-      documentId: docId, version: doc.version,
-      contentJson: doc.contentJson, authorId: userId,
-      changeDescription: 'Atualização automática',
-    })
+  const contentChanged = data.contentJson !== undefined && JSON.stringify(data.contentJson) !== JSON.stringify(doc.contentJson)
+  const titleChanged = data.title !== undefined && data.title !== doc.title
 
-    const newVersion = doc.version + 1
-    await tx.update(documents).set({
+  if (contentChanged || titleChanged) {
+    await db.transaction(async (tx) => {
+      await tx.insert(documentVersions).values({
+        documentId: docId, version: doc.version,
+        contentJson: doc.contentJson, authorId: userId,
+        changeDescription: data.changeDescription || 'Atualização automática',
+      })
+
+      const newVersion = doc.version + 1
+      await tx.update(documents).set({
+        ...allowedFields,
+        version: newVersion,
+        isEditing: false, editingBy: null, editingExpiresAt: null,
+        updatedAt: sql`NOW()`,
+      }).where(eq(documents.id, docId))
+    })
+  } else {
+    await db.update(documents).set({
       ...allowedFields,
-      version: newVersion,
       isEditing: false, editingBy: null, editingExpiresAt: null,
       updatedAt: sql`NOW()`,
     }).where(eq(documents.id, docId))
-  })
+  }
 
   const [updated] = await db.select().from(documents).where(eq(documents.id, docId)).limit(1)
   return updated

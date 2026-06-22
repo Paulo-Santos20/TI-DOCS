@@ -1,27 +1,34 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AdminTabs from '../components/admin/AdminTabs'
 import SectorFormModal from '../components/admin/SectorFormModal'
+import api from '../lib/api'
 
-interface Sector { id: number; name: string; createdAt: string; userCount: number }
+interface Sector { id: number; name: string; createdAt: string }
 
 export default function AdminSectors() {
-  const [sectors, setSectors] = useState<Sector[]>([
-    { id: 1, name: 'TI', createdAt: '2024-01-01', userCount: 1 },
-    { id: 2, name: 'Enfermagem', createdAt: '2024-01-01', userCount: 1 },
-    { id: 3, name: 'Medicina', createdAt: '2024-01-01', userCount: 1 },
-    { id: 4, name: 'Administrativo', createdAt: '2024-01-02', userCount: 0 },
-  ])
+  const [sectors, setSectors] = useState<Sector[]>([])
   const [showModal, setShowModal] = useState(false)
 
-  const handleCreate = (name: string) => {
-    const newSector: Sector = {
-      id: sectors.length + 1,
-      name,
-      createdAt: new Date().toISOString().split('T')[0],
-      userCount: 0,
-    }
-    setSectors(prev => [...prev, newSector])
+  const load = () => {
+    api.get('/sectors').then(({ data }) => setSectors(data)).catch(() => {})
+  }
+
+  useEffect(load, [])
+
+  const handleCreate = async (name: string) => {
+    try {
+      await api.post('/sectors', { name })
+      load()
+    } catch {}
     setShowModal(false)
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Tem certeza que deseja excluir este setor?')) return
+    try {
+      await api.delete(`/sectors/${id}`)
+      load()
+    } catch {}
   }
 
   return (
@@ -44,7 +51,6 @@ export default function AdminSectors() {
             <tr className="border-b border-slate-200">
               <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Nome</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Criado em</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Usuários</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Ações</th>
             </tr>
           </thead>
@@ -55,9 +61,11 @@ export default function AdminSectors() {
                 <td className="px-6 py-4 text-sm text-slate-500">
                   {new Date(sector.createdAt).toLocaleDateString('pt-BR')}
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-500">{sector.userCount}</td>
                 <td className="px-6 py-4">
-                  <button className="text-sm text-red-500 hover:text-red-700 transition-colors">Excluir</button>
+                  <button onClick={() => handleDelete(sector.id)}
+                    className="text-sm text-red-500 hover:text-red-700 transition-colors">
+                    Excluir
+                  </button>
                 </td>
               </tr>
             ))}

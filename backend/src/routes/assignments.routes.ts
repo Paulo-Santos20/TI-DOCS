@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { authMiddleware, requireRole, AuthRequest } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
-import { asyncHandler } from '../lib/async-handler'
+import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import { db } from '../config/database'
 import { trainingAssignments } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
@@ -39,7 +39,8 @@ router.post('/', requireRole('admin'), validate(createSchema), asyncHandler(asyn
 }))
 
 router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
-  await db.delete(trainingAssignments).where(eq(trainingAssignments.id, parseInt(req.params.id)))
+  const id = parseIdParam(req.params.id, 'ID da atribuição')
+  await db.delete(trainingAssignments).where(eq(trainingAssignments.id, id))
   res.json({ deleted: true })
 }))
 

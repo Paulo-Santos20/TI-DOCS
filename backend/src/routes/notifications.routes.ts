@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { authMiddleware, AuthRequest } from '../middleware'
-import { asyncHandler } from '../lib/async-handler'
+import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import { db } from '../config/database'
 import { notifications } from '../db/schema'
 import { eq, desc, and, count } from 'drizzle-orm'
@@ -22,8 +22,9 @@ router.get('/unread-count', asyncHandler(async (req: AuthRequest, res) => {
 }))
 
 router.patch('/:id/read', asyncHandler(async (req: AuthRequest, res) => {
+  const id = parseIdParam(req.params.id, 'ID da notificação')
   await db.update(notifications).set({ read: true })
-    .where(and(eq(notifications.id, parseInt(req.params.id)), eq(notifications.userId, req.user!.userId)))
+    .where(and(eq(notifications.id, id), eq(notifications.userId, req.user!.userId)))
   res.json({ success: true })
 }))
 

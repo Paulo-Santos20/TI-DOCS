@@ -172,3 +172,10 @@ body {
   color: var(--slate-500) !important;
   opacity: 1;
 }
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: var(--bg-input);
+  color: var(--slate-800);
+}

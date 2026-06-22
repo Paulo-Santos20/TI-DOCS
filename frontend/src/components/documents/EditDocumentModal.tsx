@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import LexicalEditor from '../editor/LexicalEditor'
 
 interface Category { id: number; name: string; parentId: number | null; sectorId: number | null }
 interface Sector { id: number; name: string }
@@ -17,24 +18,23 @@ interface Props {
 }
 
 export default function EditDocumentModal({ doc, sectors, categories, onSave, onClose }: Props) {
-  const currentText = typeof doc.contentJson === 'object' && doc.contentJson?.text
-    ? doc.contentJson.text : JSON.stringify(doc.contentJson || {}, null, 2)
+  const hasRoot = doc.contentJson?.root
+  const initialJson = hasRoot ? doc.contentJson : undefined
 
   const [form, setForm] = useState({
     title: doc.title,
-    contentJson: currentText === '{}' ? '' : currentText,
     categoryId: doc.categoryId || 0,
   })
+  const [content, setContent] = useState<any>(null)
 
   const filteredCats = categories.filter(c => c.sectorId === null || c.sectorId === doc.sectorId)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title || form.title.length < 3) return
-    const content = form.contentJson ? { text: form.contentJson } : {}
     onSave({
       title: form.title,
-      contentJson: content,
+      contentJson: content || doc.contentJson,
       categoryId: form.categoryId > 0 ? form.categoryId : undefined,
     })
   }
@@ -43,7 +43,7 @@ export default function EditDocumentModal({ doc, sectors, categories, onSave, on
 
   return (
     <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-slate-800">Editar Documento</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
@@ -76,9 +76,8 @@ export default function EditDocumentModal({ doc, sectors, categories, onSave, on
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Conteúdo</label>
-            <textarea value={form.contentJson} onChange={e => setForm(f => ({ ...f, contentJson: e.target.value }))}
-              rows={10}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200 outline-none resize-y font-mono text-sm" />
+            <LexicalEditor initialJson={initialJson} onChange={(json) => setContent(json)}
+              placeholder="Edite o conteúdo do documento..." />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancelar</button>

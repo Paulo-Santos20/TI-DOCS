@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import api from '../lib/api'
 
 export interface User {
   id: number; name: string; email: string; role: 'admin' | 'user'; sectorId: number; avatarUrl?: string
@@ -11,11 +12,6 @@ interface AuthContextType {
   updateUser: (data: Partial<User>) => void
 }
 
-const MOCK_USERS: Record<string, User> = {
-  'admin@tidocs.com': { id: 1, name: 'Administrador', email: 'admin@tidocs.com', role: 'admin', sectorId: 1 },
-  'user@tidocs.com': { id: 2, name: 'Usuário Padrão', email: 'user@tidocs.com', role: 'user', sectorId: 2 },
-}
-
 const AuthContext = createContext<AuthContextType>(null!)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -23,21 +19,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem('mockUser')
     return stored ? JSON.parse(stored) : null
   })
-  const [loading] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (user) localStorage.setItem('mockUser', JSON.stringify(user))
     else localStorage.removeItem('mockUser')
   }, [user])
 
-  const login = async (email: string, _password: string) => {
-    const mockUser = MOCK_USERS[email]
-    if (!mockUser) throw new Error('Credenciais inválidas')
-    const stored = localStorage.getItem(`avatar_${mockUser.id}`)
-    setUser(stored ? { ...mockUser, avatarUrl: stored } : mockUser)
+  const login = async (email: string, password: string) => {
+    setLoading(true)
+    try {
+      const { data } = await api.post('/auth/login', { email, password })
+      localStorage.setItem('token', data.token)
+      setUser(data.user)
+    } catch (err: any) {
+      localStorage.removeItem('token')
+      throw new Error(err?.response?.data?.message || 'Credenciais inválidas')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const logout = () => setUser(null)
+  const logout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('mockUser')
+    setUser(null)
+  }
 
   const updateUser = (data: Partial<User>) => {
     setUser(prev => prev ? { ...prev, ...data } : null)

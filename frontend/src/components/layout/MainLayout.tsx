@@ -5,13 +5,14 @@ import NotificationBell from '../ui/NotificationBell'
 import ThemeToggle from '../ui/ThemeToggle'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import AIFab from '../ai/AIFab'
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const navigate = useNavigate()
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--bg-page)' }}>
+    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--slate-50)' }}>
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <header style={{ backgroundColor: 'var(--bg-header)', borderColor: 'var(--border)' }}
@@ -36,6 +37,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         <main className="flex-1 p-6 lg:p-8 overflow-auto relative">
           {children}
         </main>
+        <AIFab />
       </div>
     </div>
   )

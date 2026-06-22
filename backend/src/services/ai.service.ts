@@ -1,11 +1,33 @@
 import { env } from '../config/environment'
+import { AppError } from '../middleware/error.middleware'
 
 interface OllamaGenerateResponse {
   response: string
 }
 
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal })
+    if (!response.ok) {
+      throw new AppError(502, `Ollama retornou erro ${response.status}`)
+    }
+    return response
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new AppError(503, 'IA não respondeu a tempo. Verifique se o Ollama está rodando.')
+    }
+    if (err instanceof AppError) throw err
+    throw new AppError(503, `Não foi possível conectar ao Ollama: ${err.message}`)
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function askPhi(prompt: string): Promise<string> {
-  const response = await fetch(`${env.OLLAMA_URL}/api/generate`, {
+  const response = await fetchWithTimeout(`${env.OLLAMA_URL}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

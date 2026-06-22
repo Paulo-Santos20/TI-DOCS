@@ -6,12 +6,18 @@ function parseIntSafe(val: string | undefined, fallback: number): number {
   return isNaN(parsed) ? fallback : parsed
 }
 
+const dbHost = process.env.DB_HOST || 'localhost'
+const dbPort = process.env.DB_PORT || '5432'
+const dbName = process.env.DB_NAME || 'tidocs'
+const dbUser = process.env.DB_USER || 'tidocs'
+const dbPassword = process.env.DB_PASSWORD || 'tidocs123'
+
 export const env = {
-  DB_HOST: process.env.DB_HOST || 'localhost',
+  DB_HOST: dbHost,
   DB_PORT: parseIntSafe(process.env.DB_PORT, 5432),
-  DB_NAME: process.env.DB_NAME || 'tidocs',
-  DB_USER: process.env.DB_USER || 'tidocs',
-  DB_PASSWORD: process.env.DB_PASSWORD || 'tidocs123',
+  DB_NAME: dbName,
+  DB_USER: dbUser,
+  DB_PASSWORD: dbPassword,
   JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-change-in-production',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '8h',
   OLLAMA_URL: process.env.OLLAMA_URL || 'http://localhost:11434',
@@ -24,5 +30,5 @@ export const env = {
   DB_POOL_MAX: parseIntSafe(process.env.DB_POOL_MAX, 20),
   RATE_LIMIT_WINDOW_MS: parseIntSafe(process.env.RATE_LIMIT_WINDOW_MS, 900000),
   RATE_LIMIT_MAX: parseIntSafe(process.env.RATE_LIMIT_MAX, 100),
-  DATABASE_URL: process.env.DATABASE_URL || `postgres://${process.env.DB_USER || 'tidocs'}:${process.env.DB_PASSWORD || 'tidocs123'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${process.env.DB_NAME || 'tidocs'}`,
+  DATABASE_URL: process.env.DATABASE_URL || `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`,
 }

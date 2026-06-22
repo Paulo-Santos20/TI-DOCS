@@ -3,22 +3,24 @@ import { $getSelection, $isRangeSelection, FORMAT_TEXT_COMMAND, FORMAT_ELEMENT_C
 import { $createHeadingNode, $isHeadingNode, HeadingTagType } from '@lexical/rich-text'
 import { $setBlocksType } from '@lexical/selection'
 import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function Toolbar() {
   const [editor] = useLexicalComposerContext()
   const [isBold, setIsBold] = useState(false)
   const [isItalic, setIsItalic] = useState(false)
 
-  editor.registerUpdateListener(({ editorState }) => {
-    editorState.read(() => {
-      const sel = $getSelection()
-      if ($isRangeSelection(sel)) {
-        setIsBold(sel.hasFormat('bold'))
-        setIsItalic(sel.hasFormat('italic'))
-      }
+  useEffect(() => {
+    return editor.registerUpdateListener(({ editorState }) => {
+      editorState.read(() => {
+        const sel = $getSelection()
+        if ($isRangeSelection(sel)) {
+          setIsBold(sel.hasFormat('bold'))
+          setIsItalic(sel.hasFormat('italic'))
+        }
+      })
     })
-  })
+  }, [editor])
 
   const btnClass = (active: boolean) =>
     `p-2 rounded-lg text-sm transition-colors ${active ? 'bg-clinical-100 text-clinical-700' : 'text-slate-500 hover:bg-slate-100'}`

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import AdminTabs from '../components/admin/AdminTabs'
 import { CardSkeleton } from '../components/ui/Skeleton'
+import api from '../lib/api'
 
 interface AdminStats {
   totalDocs: number; totalSectors: number; totalUsers: number
@@ -13,7 +14,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/dashboard/stats').then(r => r.json()).then(setStats)
+    api.get('/dashboard/stats').then(r => setStats(r.data))
       .catch(() => setStats(null)).finally(() => setLoading(false))
   }, [])
 

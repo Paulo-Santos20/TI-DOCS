@@ -1,43 +1,45 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AdminTabs from '../components/admin/AdminTabs'
+import api from '../lib/api'
 
-interface Assignment {
-  id: number; userName: string; documentTitle: string
-  dueDate: string | null; createdAt: string
-}
-
-const MOCK_USERS = [
-  { id: 2, name: 'Maria Silva', sectorId: 2 },
-  { id: 3, name: 'Carlos Santos', sectorId: 3 },
-]
-
-const MOCK_DOCS = [
-  { id: 1, title: 'POP-023: Curativos Especiais' },
-  { id: 2, title: 'POP-045: Segurança do Paciente' },
-]
+interface User { id: number; name: string }
+interface Document { id: number; title: string }
+interface Assignment { id: number; userId: number; documentId: number; dueDate: string | null; createdAt: string }
 
 export default function AdminAssignments() {
   const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [docs, setDocs] = useState<Document[]>([])
   const [showForm, setShowForm] = useState(false)
   const [newAssign, setNewAssign] = useState({ userId: 0, documentId: 0, dueDate: '' })
 
-  const handleCreate = () => {
+  const load = () => {
+    api.get('/assignments').then(({ data }) => setAssignments(data)).catch(() => {})
+    api.get('/users').then(({ data }) => setUsers(data)).catch(() => {})
+    api.get('/documents').then(({ data }) => setDocs(data)).catch(() => {})
+  }
+
+  useEffect(load, [])
+
+  const userName = (id: number) => users.find(u => u.id === id)?.name || `#${id}`
+  const docTitle = (id: number) => docs.find(d => d.id === id)?.title || `#${id}`
+
+  const handleCreate = async () => {
     if (!newAssign.userId || !newAssign.documentId) return
-    const user = MOCK_USERS.find(u => u.id === newAssign.userId)
-    const doc = MOCK_DOCS.find(d => d.id === newAssign.documentId)
-    setAssignments(prev => [...prev, {
-      id: prev.length + 1,
-      userName: user?.name || '',
-      documentTitle: doc?.title || '',
-      dueDate: newAssign.dueDate || null,
-      createdAt: new Date().toISOString(),
-    }])
+    try {
+      await api.post('/assignments', newAssign)
+      load()
+    } catch {}
     setNewAssign({ userId: 0, documentId: 0, dueDate: '' })
     setShowForm(false)
   }
 
-  const handleRemove = (id: number) => {
-    setAssignments(prev => prev.filter(a => a.id !== id))
+  const handleRemove = async (id: number) => {
+    if (!confirm('Remover esta atribuição?')) return
+    try {
+      await api.delete(`/assignments/${id}`)
+      load()
+    } catch {}
   }
 
   return (
@@ -68,8 +70,8 @@ export default function AdminAssignments() {
           <tbody>
             {assignments.map(a => (
               <tr key={a.id} className="border-b border-slate-200 hover:bg-slate-50">
-                <td className="px-6 py-4 text-sm font-medium text-slate-700">{a.userName}</td>
-                <td className="px-6 py-4 text-sm text-slate-500">{a.documentTitle}</td>
+                <td className="px-6 py-4 text-sm font-medium text-slate-700">{userName(a.userId)}</td>
+                <td className="px-6 py-4 text-sm text-slate-500">{docTitle(a.documentId)}</td>
                 <td className="px-6 py-4 text-sm text-slate-500">
                   {a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem prazo'}
                 </td>
@@ -104,7 +106,7 @@ export default function AdminAssignments() {
                 <select value={newAssign.userId} onChange={e => setNewAssign(f => ({ ...f, userId: parseInt(e.target.value) }))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none bg-white">
                   <option value={0}>Selecione...</option>
-                  {MOCK_USERS.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </div>
               <div>
@@ -112,7 +114,7 @@ export default function AdminAssignments() {
                 <select value={newAssign.documentId} onChange={e => setNewAssign(f => ({ ...f, documentId: parseInt(e.target.value) }))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none bg-white">
                   <option value={0}>Selecione...</option>
-                  {MOCK_DOCS.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+                  {docs.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
                 </select>
               </div>
               <div>

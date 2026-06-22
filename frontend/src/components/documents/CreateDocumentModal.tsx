@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import LexicalEditor from '../editor/LexicalEditor'
 
 interface Sector { id: number; name: string }
 interface Category { id: number; name: string; parentId: number | null; sectorId: number | null }
@@ -13,20 +14,19 @@ interface Props {
 export default function CreateDocumentModal({ sectors, categories, onSave, onClose }: Props) {
   const [form, setForm] = useState({
     title: '',
-    contentJson: '',
     sectorId: sectors[0]?.id || 0,
     categoryId: 0,
   })
+  const [content, setContent] = useState<any>(null)
 
   const filteredCats = categories.filter(c => !c.parentId || categories.some(p => p.id === c.parentId))
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title || form.title.length < 3) return
-    const content = form.contentJson ? { text: form.contentJson } : {}
     onSave({
       title: form.title,
-      contentJson: content,
+      contentJson: content || {},
       sectorId: form.sectorId,
       categoryId: form.categoryId > 0 ? form.categoryId : undefined,
     })
@@ -34,7 +34,7 @@ export default function CreateDocumentModal({ sectors, categories, onSave, onClo
 
   return (
     <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-slate-800">Novo Documento</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
@@ -69,11 +69,8 @@ export default function CreateDocumentModal({ sectors, categories, onSave, onClo
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Conteúdo Inicial</label>
-            <textarea value={form.contentJson} onChange={e => setForm(f => ({ ...f, contentJson: e.target.value }))}
-              rows={8}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200 outline-none resize-y font-mono text-sm"
-              placeholder="Digite o conteúdo do documento... (editor rico será implementado em breve)" />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Conteúdo</label>
+            <LexicalEditor onChange={(json) => setContent(json)} placeholder="Digite o conteúdo do documento..." />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
