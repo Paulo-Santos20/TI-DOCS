@@ -13,7 +13,7 @@ export default function Profile() {
   const avatarSrc = avatarFile || user?.avatarUrl || null
 
   useEffect(() => {
-    if (user) setForm(f => ({ ...f, name: user.name, email: user.email }))
+    if (user)     setForm(f => ({ ...f, name: user.name }))
   }, [user])
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,11 +37,10 @@ export default function Profile() {
     try {
       await api.put('/profile', {
         name: form.name,
-        email: form.email,
         currentPassword: form.currentPassword || undefined,
         newPassword: form.newPassword || undefined,
       })
-      updateUser({ name: form.name, email: form.email })
+      updateUser({ name: form.name })
       setMessage('Perfil atualizado com sucesso!')
     } catch (err: any) {
       setMessage(err?.response?.data?.error || 'Erro ao atualizar perfil')
@@ -84,9 +83,10 @@ export default function Profile() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Email</label>
-            <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border outline-none focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200"
+            <input type="email" value={form.email} disabled
+              className="w-full px-3 py-2 rounded-xl border opacity-60 cursor-not-allowed"
               style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+            <p className="text-xs text-slate-400 mt-1">Email não pode ser alterado pelo perfil. Solicite ao administrador.</p>
           </div>
 
           <hr style={{ borderColor: 'var(--border)' }} />

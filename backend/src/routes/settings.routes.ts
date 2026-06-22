@@ -5,7 +5,7 @@ import { validate } from '../middleware/validate.middleware'
 import { asyncHandler } from '../lib/async-handler'
 import { db } from '../config/database'
 import { systemConfigs } from '../db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 const router = Router()
 router.use(authMiddleware)
@@ -21,13 +21,10 @@ router.get('/', asyncHandler(async (_req, res) => {
 
 router.put('/', requireRole('admin'), validate(configSchema), asyncHandler(async (req, res) => {
   const body = req.body as Record<string, string>
+  const now = new Date().toISOString()
   for (const [key, value] of Object.entries(body)) {
-    const [existing] = await db.select().from(systemConfigs).where(eq(systemConfigs.key, key)).limit(1)
-    if (existing) {
-      await db.update(systemConfigs).set({ value }).where(eq(systemConfigs.key, key))
-    } else {
-      await db.insert(systemConfigs).values({ key, value })
-    }
+    await db.insert(systemConfigs).values({ key, value, updatedAt: now as any })
+      .onConflictDoUpdate({ target: systemConfigs.key, set: { value, updatedAt: now as any } })
   }
   res.json({ success: true })
 }))

@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS "document_chunks" (
 	"document_id" integer NOT NULL,
 	"chunk_index" integer NOT NULL,
 	"chunk_text" text NOT NULL,
-	"embedding" vector(3072)
+	"embedding" jsonb
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "document_comments" (
@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS "documents" (
 	"is_editing" boolean DEFAULT false NOT NULL,
 	"editing_by" integer,
 	"editing_expires_at" timestamp,
+	"deleted_at" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -133,8 +134,29 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"role" varchar(20) DEFAULT 'user' NOT NULL,
 	"sector_id" integer NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
+	"deleted_at" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "users_email_unique" UNIQUE("email")
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"token" varchar(255) NOT NULL,
+	"expires_at" timestamp NOT NULL,
+	"used_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "password_reset_tokens_token_unique" UNIQUE("token")
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "refresh_tokens" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"token" varchar(255) NOT NULL,
+	"expires_at" timestamp NOT NULL,
+	"revoked_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "refresh_tokens_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
 DO $$ BEGIN
@@ -270,6 +292,18 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "users" ADD CONSTRAINT "users_sector_id_sectors_id_fk" FOREIGN KEY ("sector_id") REFERENCES "public"."sectors"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -288,5 +322,7 @@ CREATE INDEX IF NOT EXISTS "idx_documents_category" ON "documents" USING btree (
 CREATE INDEX IF NOT EXISTS "idx_documents_template" ON "documents" USING btree ("is_template");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_notif_user" ON "notifications" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_notif_read" ON "notifications" USING btree ("read");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_refresh_token" ON "refresh_tokens" USING btree ("token");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_refresh_user" ON "refresh_tokens" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_assign_user_doc" ON "training_assignments" USING btree ("user_id","document_id");--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_training_user_doc" ON "training_progress" USING btree ("user_id","document_id");

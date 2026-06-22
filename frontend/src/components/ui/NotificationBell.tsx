@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
+import { getSocket, connectSocket } from '../../lib/socket'
 
 export default function NotificationBell() {
   const [count, setCount] = useState(0)
@@ -20,7 +21,19 @@ export default function NotificationBell() {
     } catch {}
   }
 
-  useEffect(() => { load(); const i = setInterval(load, 30000); return () => clearInterval(i) }, [])
+  useEffect(() => {
+    load()
+    const token = localStorage.getItem('token')
+    if (token) {
+      connectSocket(token)
+      const s = getSocket()
+      s?.on('notification:new', (notification: any) => {
+        load()
+      })
+    }
+    const i = setInterval(load, 30000)
+    return () => { clearInterval(i) }
+  }, [])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

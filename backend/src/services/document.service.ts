@@ -1,35 +1,47 @@
 import { db } from '../config/database'
 import { documents, documentVersions, sectors, documentCategories } from '../db/schema'
 import { AppError } from '../middleware/error.middleware'
-import { eq, desc, sql, and } from 'drizzle-orm'
+import { eq, desc, sql, and, isNull } from 'drizzle-orm'
 
-export async function listDocuments(sectorId?: number, categoryId?: number) {
-  const query = db.select({
+function notDeleted() { return isNull(documents.deletedAt) }
+
+export async function listDocuments(sectorId?: number, categoryId?: number, page = 1, limit = 50) {
+  const offset = (page - 1) * limit
+  const conditions = and(notDeleted(), eq(documents.isTemplate, false), sectorId ? eq(documents.sectorId, sectorId) : undefined, categoryId ? eq(documents.categoryId, categoryId) : undefined)
+  const [countResult] = await db.select({ count: sql<number>`count(*)::int` })
+    .from(documents)
+    .where(conditions)
+
+  const rows = await db.select({
     id: documents.id, title: documents.title, status: documents.status,
     version: documents.version, sectorId: documents.sectorId,
     sectorName: sectors.name, categoryId: documents.categoryId,
+    categoryName: documentCategories.name,
+    contentType: documents.contentType,
     authorId: documents.authorId,
     updatedAt: documents.updatedAt, createdAt: documents.createdAt,
   }).from(documents).leftJoin(sectors, eq(documents.sectorId, sectors.id))
+    .leftJoin(documentCategories, eq(documents.categoryId, documentCategories.id))
+    .where(conditions)
     .orderBy(desc(documents.updatedAt))
+    .limit(limit).offset(offset)
 
-  const conditions: any[] = [eq(documents.isTemplate, false)]
-  if (sectorId) conditions.push(eq(documents.sectorId, sectorId))
-  if (categoryId) conditions.push(eq(documents.categoryId, categoryId))
-  return await query.where(and(...conditions))
+  return { data: rows, total: countResult.count, page, limit }
 }
 
 export async function getDocument(id: number) {
-  const [doc] = await db.select().from(documents).where(eq(documents.id, id)).limit(1)
+  const [doc] = await db.select().from(documents).where(and(eq(documents.id, id), notDeleted())).limit(1)
   if (!doc) throw new AppError(404, 'Documento não encontrado')
   return doc
 }
 
 export async function createDocument(data: {
-  title: string; contentJson?: any; sectorId: number; authorId: number; categoryId?: number
+  title: string; contentJson?: any; contentType?: string; contentUrl?: string; sectorId: number; authorId: number; categoryId?: number
 }) {
   const [doc] = await db.insert(documents).values({
     title: data.title, contentJson: data.contentJson || {},
+    contentType: data.contentType || 'rich-text',
+    contentUrl: data.contentUrl || null,
     sectorId: data.sectorId, authorId: data.authorId,
     categoryId: data.categoryId,
     status: 'draft',
@@ -38,18 +50,25 @@ export async function createDocument(data: {
 }
 
 export async function deleteDocument(docId: number) {
+  const [doc] = await db.select().from(documents).where(and(eq(documents.id, docId), notDeleted())).limit(1)
+  if (!doc) throw new AppError(404, 'Documento não encontrado')
+  await db.update(documents).set({ deletedAt: sql`NOW()` }).where(eq(documents.id, docId))
+  return { deleted: true }
+}
+
+export async function restoreDocument(docId: number) {
   const [doc] = await db.select().from(documents).where(eq(documents.id, docId)).limit(1)
   if (!doc) throw new AppError(404, 'Documento não encontrado')
-  await db.delete(documentVersions).where(eq(documentVersions.documentId, docId))
-  await db.delete(documents).where(eq(documents.id, docId))
-  return { deleted: true }
+  if (!doc.deletedAt) throw new AppError(400, 'Documento não está deletado')
+  await db.update(documents).set({ deletedAt: null }).where(eq(documents.id, docId))
+  return { restored: true }
 }
 
 export async function updateDocumentStatus(docId: number, status: string) {
   const validStatuses = ['draft', 'review', 'published', 'archived']
   if (!validStatuses.includes(status)) throw new AppError(400, 'Status inválido')
 
-  const [doc] = await db.select().from(documents).where(eq(documents.id, docId)).limit(1)
+  const [doc] = await db.select().from(documents).where(and(eq(documents.id, docId), notDeleted())).limit(1)
   if (!doc) throw new AppError(404, 'Documento não encontrado')
 
   const [updated] = await db.update(documents).set({
@@ -59,7 +78,7 @@ export async function updateDocumentStatus(docId: number, status: string) {
 }
 
 export async function acquireLock(docId: number, userId: number) {
-  const [doc] = await db.select().from(documents).where(eq(documents.id, docId)).limit(1)
+  const [doc] = await db.select().from(documents).where(and(eq(documents.id, docId), notDeleted())).limit(1)
   if (!doc) throw new AppError(404, 'Documento não encontrado')
 
   if (doc.isEditing && doc.editingBy !== userId) {
@@ -82,14 +101,16 @@ export async function releaseLock(docId: number) {
 }
 
 export async function updateDocument(docId: number, data: {
-  title?: string; contentJson?: any; categoryId?: number
+  title?: string; contentType?: string; contentUrl?: string; contentJson?: any; categoryId?: number
   changeDescription?: string
 }, userId: number) {
-  const [doc] = await db.select().from(documents).where(eq(documents.id, docId)).limit(1)
+  const [doc] = await db.select().from(documents).where(and(eq(documents.id, docId), notDeleted())).limit(1)
   if (!doc) throw new AppError(404, 'Documento não encontrado')
 
   const allowedFields: Record<string, any> = {}
   if (data.title !== undefined) allowedFields.title = data.title
+  if (data.contentType !== undefined) allowedFields.contentType = data.contentType
+  if (data.contentUrl !== undefined) allowedFields.contentUrl = data.contentUrl
   if (data.contentJson !== undefined) allowedFields.contentJson = data.contentJson
   if (data.categoryId !== undefined) allowedFields.categoryId = data.categoryId
 

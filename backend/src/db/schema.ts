@@ -1,5 +1,4 @@
 import { pgTable, serial, varchar, integer, timestamp, boolean, jsonb, text, uniqueIndex, index, foreignKey } from 'drizzle-orm/pg-core'
-import { vector } from 'drizzle-orm/pg-core'
 
 export const UserRole = ['admin', 'user'] as const
 export const DocumentStatus = ['draft', 'review', 'published', 'archived'] as const
@@ -18,8 +17,11 @@ export const users = pgTable('users', {
   role: varchar('role', { length: 20 }).notNull().default('user'),
   sectorId: integer('sector_id').references(() => sectors.id).notNull(),
   isActive: boolean('is_active').notNull().default(true),
+  deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+}, (table) => ({
+  userSectorIdx: index('idx_users_sector').on(table.sectorId),
+}))
 
 export const documentCategories = pgTable('document_categories', {
   id: serial('id').primaryKey(),
@@ -53,6 +55,8 @@ export const documents = pgTable('documents', {
   id: serial('id').primaryKey(),
   title: varchar('title', { length: 255 }).notNull(),
   contentJson: jsonb('content_json').notNull().default({}),
+  contentType: varchar('content_type', { length: 20 }).notNull().default('rich-text'),
+  contentUrl: varchar('content_url', { length: 500 }),
   sectorId: integer('sector_id').references(() => sectors.id).notNull(),
   authorId: integer('author_id').references(() => users.id).notNull(),
   categoryId: integer('category_id').references(() => documentCategories.id),
@@ -65,6 +69,7 @@ export const documents = pgTable('documents', {
   isEditing: boolean('is_editing').notNull().default(false),
   editingBy: integer('editing_by').references(() => users.id),
   editingExpiresAt: timestamp('editing_expires_at'),
+  deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -72,6 +77,10 @@ export const documents = pgTable('documents', {
   statusIdx: index('idx_documents_status').on(table.status),
   categoryIdx: index('idx_documents_category').on(table.categoryId),
   templateIdx: index('idx_documents_template').on(table.isTemplate),
+  authorIdx: index('idx_documents_author').on(table.authorId),
+  reviewedByIdx: index('idx_documents_reviewed_by').on(table.reviewedBy),
+  editingByIdx: index('idx_documents_editing_by').on(table.editingBy),
+  templateSectorIdx: index('idx_documents_template_sector').on(table.templateForSectorId),
 }))
 
 export const documentVersions = pgTable('document_versions', {
@@ -82,7 +91,9 @@ export const documentVersions = pgTable('document_versions', {
   authorId: integer('author_id').references(() => users.id).notNull(),
   changeDescription: varchar('change_description', { length: 500 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+}, (table) => ({
+  versionDocIdx: index('idx_versions_document').on(table.documentId),
+}))
 
 export const documentComments = pgTable('document_comments', {
   id: serial('id').primaryKey(),
@@ -101,7 +112,7 @@ export const documentChunks = pgTable('document_chunks', {
   documentId: integer('document_id').references(() => documents.id).notNull(),
   chunkIndex: integer('chunk_index').notNull(),
   chunkText: text('chunk_text').notNull(),
-  embedding: vector('embedding', { dimensions: 3072 }),
+  embedding: jsonb('embedding'),
 }, (table) => ({
   docIdx: index('idx_chunks_document').on(table.documentId),
 }))
@@ -139,8 +150,7 @@ export const notifications = pgTable('notifications', {
   read: boolean('read').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
-  notifUserIdx: index('idx_notif_user').on(table.userId),
-  notifReadIdx: index('idx_notif_read').on(table.read),
+  notifUserReadIdx: index('idx_notif_user_read').on(table.userId, table.read),
 }))
 
 export const activityLogs = pgTable('activity_logs', {
@@ -154,6 +164,28 @@ export const activityLogs = pgTable('activity_logs', {
 }, (table) => ({
   logUserIdx: index('idx_log_user').on(table.userId),
   logEntityIdx: index('idx_log_entity').on(table.entityType, table.entityId),
+  logCreatedAtIdx: index('idx_log_created').on(table.createdAt),
+}))
+
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  token: varchar('token', { length: 255 }).notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const refreshTokens = pgTable('refresh_tokens', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  token: varchar('token', { length: 255 }).notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  revokedAt: timestamp('revoked_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  refreshTokenIdx: index('idx_refresh_token').on(table.token),
+  refreshUserIdx: index('idx_refresh_user').on(table.userId),
 }))
 
 export const systemConfigs = pgTable('system_configs', {

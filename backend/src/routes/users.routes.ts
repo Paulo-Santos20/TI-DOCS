@@ -5,7 +5,7 @@ import { validate } from '../middleware/validate.middleware'
 import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import { logAudit } from '../lib/audit'
 import { AppError } from '../middleware/error.middleware'
-import { listUsers, getUser, createUser, updateUser, deleteUser } from '../services/user.service'
+import { listUsers, getUser, createUser, updateUser, deleteUser, restoreUser } from '../services/user.service'
 
 const router = Router()
 router.use(authMiddleware)
@@ -50,7 +50,7 @@ router.post('/', requireRole('admin'), validate(createUserSchema), asyncHandler(
 
 router.put('/:id', requireRole('admin'), validate(updateUserSchema), asyncHandler(async (req: AuthRequest, res) => {
   const id = parseIdParam(req.params.id, 'ID do usuário')
-  const user = await updateUser(id, req.body)
+  const user = await updateUser(id, req.body, req.user!.userId)
   await logAudit({ userId: req.user!.userId, action: 'update', entityType: 'user', entityId: id })
   res.json(user)
 }))
@@ -68,6 +68,13 @@ router.delete('/:id', requireRole('admin'), asyncHandler(async (req: AuthRequest
   const id = parseIdParam(req.params.id, 'ID do usuário')
   const result = await deleteUser(id)
   await logAudit({ userId: req.user!.userId, action: 'delete', entityType: 'user', entityId: id })
+  res.json(result)
+}))
+
+router.post('/:id/restore', requireRole('admin'), asyncHandler(async (req: AuthRequest, res) => {
+  const id = parseIdParam(req.params.id, 'ID do usuário')
+  const result = await restoreUser(id)
+  await logAudit({ userId: req.user!.userId, action: 'restore', entityType: 'user', entityId: id })
   res.json(result)
 }))
 

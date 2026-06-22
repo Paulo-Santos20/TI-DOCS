@@ -26,31 +26,53 @@ describe('user.service', () => {
       const mockUsers = [
         { id: 1, name: 'Admin', email: 'admin@test.com', role: 'admin', sectorId: 1, isActive: true, sectorName: 'TI', createdAt: new Date() },
       ]
-      const queryPromise = Promise.resolve(mockUsers)
-      const leftJoinMock = vi.fn().mockReturnValue(queryPromise)
-      const fromMock = vi.fn().mockReturnValue({ leftJoin: leftJoinMock })
-      ;(db.select as any).mockReturnValue({ from: fromMock })
+      let callIndex = 0
+      const chainable = () => {
+        const chain: any = new Proxy({}, {
+          get: (target, prop) => {
+            if (prop === 'then') return (resolve: any) => {
+              callIndex++
+              const val = callIndex === 1 ? [{ count: 1 }] : mockUsers
+              return Promise.resolve(val).then(resolve)
+            }
+            if (prop === 'catch') return vi.fn()
+            return () => chain
+          },
+        })
+        return chain
+      }
+      ;(db.select as any).mockImplementation(chainable)
 
       const result = await listUsers()
-      expect(result).toHaveLength(1)
-      expect(result[0].name).toBe('Admin')
+      expect(result.data).toHaveLength(1)
+      expect(result.data[0].name).toBe('Admin')
+      expect(result.total).toBe(1)
     })
 
     it('should filter by sectorId when provided', async () => {
       const mockUsers = [
         { id: 2, name: 'User', email: 'user@test.com', role: 'user', sectorId: 2, isActive: true, sectorName: 'Enfermagem', createdAt: new Date() },
       ]
-      const whereResult = Promise.resolve(mockUsers)
-      const whereMock = vi.fn().mockReturnValue(whereResult)
-      const queryPromise = Promise.resolve(mockUsers)
-      Object.assign(queryPromise, { where: whereMock })
-      const leftJoinMock = vi.fn().mockReturnValue(queryPromise)
-      const fromMock = vi.fn().mockReturnValue({ leftJoin: leftJoinMock })
-      ;(db.select as any).mockReturnValue({ from: fromMock })
+      let callIndex = 0
+      const chainable = () => {
+        const chain: any = new Proxy({}, {
+          get: (target, prop) => {
+            if (prop === 'then') return (resolve: any) => {
+              callIndex++
+              const val = callIndex === 1 ? [{ count: 1 }] : mockUsers
+              return Promise.resolve(val).then(resolve)
+            }
+            if (prop === 'catch') return vi.fn()
+            return () => chain
+          },
+        })
+        return chain
+      }
+      ;(db.select as any).mockImplementation(chainable)
 
       const result = await listUsers(2)
-      expect(result).toHaveLength(1)
-      expect(result[0].sectorId).toBe(2)
+      expect(result.data).toHaveLength(1)
+      expect(result.data[0].sectorId).toBe(2)
     })
   })
 

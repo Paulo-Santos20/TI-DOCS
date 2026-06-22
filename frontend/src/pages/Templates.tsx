@@ -14,7 +14,7 @@ export default function Templates() {
   const [showCreate, setShowCreate] = useState(false)
 
   useEffect(() => {
-    api.get('/documents', { params: { isTemplate: true } }).then(({ data }) => {
+    api.get('/templates').then(({ data }) => {
       setTemplates(data)
     }).catch(() => {})
   }, [])

@@ -3,18 +3,19 @@ import bcrypt from 'bcryptjs'
 import { db, connection } from '../config/database'
 import { sectors, users, systemConfigs } from './schema'
 import { eq } from 'drizzle-orm'
+import logger from '../config/logger'
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@tidocs.com'
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
 
 export async function main() {
-  console.log('Seeding database...')
+  logger.info('Seeding database...')
 
   const existingSectors = await db.select().from(sectors)
   const existingUsers = await db.select().from(users)
 
   if (existingSectors.length > 0 && existingUsers.length > 0) {
-    console.log('Database already seeded. Skipping.')
+    logger.info('Database already seeded. Skipping.')
     await connection.end()
     return
   }
@@ -58,11 +59,11 @@ export async function main() {
     ])
   }
 
-  console.log('Seed complete.')
+  logger.info('Seed complete.')
   await connection.end()
 }
 
 main().catch((err) => {
-  console.error('Seed failed:', err)
+  logger.error('Seed failed:', err)
   process.exit(1)
 })

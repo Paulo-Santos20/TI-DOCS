@@ -2,9 +2,13 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
-import rateLimit from 'express-rate-limit'
+import morgan from 'morgan'
+import cookieParser from 'cookie-parser'
 import { env } from './config/environment'
+import logger from './config/logger'
 import { errorHandler } from './middleware/error.middleware'
+import { authLimiter, apiLimiter, aiLimiter, searchLimiter, uploadLimiter } from './middleware/rate-limit.middleware'
+import { doubleCsrfProtection, csrfTokenHandler, csrfErrorHandler } from './middleware/csrf.middleware'
 import authRoutes from './routes/auth.routes'
 import userRoutes from './routes/users.routes'
 import sectorRoutes from './routes/sectors.routes'
@@ -25,6 +29,10 @@ import settingsRoutes from './routes/settings.routes'
 import searchRoutes from './routes/search.routes'
 import seedRoutes from './routes/seed.routes'
 import reportRoutes from './routes/reports.routes'
+import healthRoutes from './routes/health.routes'
+import swaggerUi from 'swagger-ui-express'
+import { swaggerSpec } from './config/swagger'
+import { setupSocket } from './socket'
 
 const app = express()
 
@@ -32,32 +40,30 @@ app.set('trust proxy', 1)
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }))
 app.use(express.json({ limit: '10mb' }))
+app.use(cookieParser())
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Muitas tentativas de login. Tente novamente em 15 minutos.' },
-})
+const morganStream = { write: (message: string) => logger.info(message.trim()) }
+app.use(morgan('combined', { stream: morganStream }))
 
-const apiLimiter = rateLimit({
-  windowMs: env.RATE_LIMIT_WINDOW_MS,
-  max: env.RATE_LIMIT_MAX,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Muitas requisições. Tente novamente mais tarde.' },
-})
+app.get('/api/csrf-token', csrfTokenHandler)
+
+const csrfExcluded = express.Router()
+csrfExcluded.use('/health', healthRoutes)
+csrfExcluded.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+csrfExcluded.use('/docs.json', (_req, res) => res.json(swaggerSpec))
 
 app.use('/api/auth', authLimiter, authRoutes)
+app.use('/api', csrfExcluded)
+
+app.use('/api', doubleCsrfProtection)
 app.use('/api', apiLimiter)
 
 app.use('/api/users', userRoutes)
 app.use('/api/sectors', sectorRoutes)
 app.use('/api/documents', documentRoutes)
-app.use('/api/ai', aiRoutes)
+app.use('/api/ai', aiLimiter, aiRoutes)
 app.use('/api/treinamentos', trainingRoutes)
-app.use('/api/files', fileRoutes)
+app.use('/api/files', uploadLimiter, fileRoutes)
 app.use('/api/categories', categoryRoutes)
 app.use('/api/comments', commentRoutes)
 app.use('/api/templates', templateRoutes)
@@ -68,29 +74,29 @@ app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/settings', settingsRoutes)
-app.use('/api/search', searchRoutes)
+app.use('/api/search', searchLimiter, searchRoutes)
 app.use('/api/seed', seedRoutes)
 app.use('/api/reports', reportRoutes)
-
-app.get('/api/health', (_req, res) => res.json({ status: 'ok' }))
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Rota não encontrada' })
 })
 
+app.use(csrfErrorHandler)
 app.use(errorHandler)
 
 const server = app.listen(env.PORT, () => {
-  console.log(`TI DOCS backend running on port ${env.PORT}`)
+  logger.info(`TI DOCS backend running on port ${env.PORT}`)
+  setupSocket(server)
 })
 
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received. Shutting down gracefully...')
+  logger.info('SIGTERM received. Shutting down gracefully...')
   server.close(() => process.exit(0))
 })
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received. Shutting down gracefully...')
+  logger.info('SIGINT received. Shutting down gracefully...')
   server.close(() => process.exit(0))
 })
 

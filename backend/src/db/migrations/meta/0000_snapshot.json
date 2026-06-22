@@ -250,7 +250,7 @@
         },
         "embedding": {
           "name": "embedding",
-          "type": "vector(3072)",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         }

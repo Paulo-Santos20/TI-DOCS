@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import api from '../lib/api'
 import CreateDocumentModal from '../components/documents/CreateDocumentModal'
 
-interface Doc { id: number; title: string; status: string; version: number; sectorName: string; categoryId?: number | null; updatedAt: string }
+interface Doc { id: number; title: string; status: string; version: number; sectorName: string; categoryId?: number | null; categoryName?: string | null; contentType: string; updatedAt: string }
 interface Category { id: number; name: string; parentId: number | null; sectorId: number | null }
 interface Sector { id: number; name: string }
 
@@ -26,7 +26,7 @@ export default function Documents() {
 
   useEffect(() => {
     api.get('/documents', { params: { categoryId: selectedCategory } })
-      .then(({ data }) => setDocs(data)).catch(() => {})
+      .then(({ data }) => setDocs(data.data)).catch(() => {})
   }, [selectedCategory])
 
   useEffect(() => {
@@ -40,14 +40,15 @@ export default function Documents() {
     ? categories.find(c => c.id === selectedCategory)?.name
     : null
 
-  const handleCreateDoc = async (data: { title: string; contentJson: string; sectorId: number; categoryId?: number }) => {
+  const handleCreateDoc = async (data: { title: string; contentJson: any; contentType?: string; contentUrl?: string; sectorId: number; categoryId?: number }) => {
     try {
-      const payload: any = { title: data.title, contentJson: data.contentJson, sectorId: data.sectorId }
+      const payload: any = { title: data.title, contentJson: data.contentJson, contentType: data.contentType || 'rich-text', sectorId: data.sectorId }
+      if (data.contentUrl) payload.contentUrl = data.contentUrl
       if (data.categoryId) payload.categoryId = data.categoryId
       await api.post('/documents', payload)
       setShowCreateModal(false)
       const { data: refreshed } = await api.get('/documents', { params: { categoryId: selectedCategory } })
-      setDocs(refreshed)
+      setDocs(refreshed.data)
     } catch (e: any) {
       alert(e.response?.data?.error || 'Erro ao criar documento')
     }
@@ -136,6 +137,7 @@ export default function Documents() {
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Título</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Pasta</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Setor</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Versão</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Status</th>
@@ -146,7 +148,13 @@ export default function Documents() {
                 {docs.map(doc => (
                   <tr key={doc.id} className="border-b border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
                       onClick={() => navigate(`/documentos/${doc.id}`)}>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700">{doc.title}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-700 flex items-center gap-2">
+                      {doc.contentType === 'pdf' && <span className="text-xs text-red-500" title="PDF">📕</span>}
+                      {doc.contentType === 'video' && <span className="text-xs text-blue-500" title="Vídeo">🎬</span>}
+                      {doc.contentType === 'rich-text' && <span className="text-xs text-slate-400" title="Texto">📄</span>}
+                      {doc.title}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-500">{doc.categoryName || '—'}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{doc.sectorName}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">v{doc.version}</td>
                     <td className="px-6 py-4">
@@ -164,7 +172,7 @@ export default function Documents() {
                   </tr>
                 ))}
                 {docs.length === 0 && (
-                  <tr><td colSpan={5} className="px-6 py-12 text-center">
+                  <tr><td colSpan={6} className="px-6 py-12 text-center">
                     <p className="text-slate-400">
                       {selectedCategory ? 'Nenhum documento nesta pasta' : 'Nenhum documento encontrado'}
                     </p>

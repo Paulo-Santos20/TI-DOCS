@@ -7,7 +7,7 @@ import EditDocumentModal from '../components/documents/EditDocumentModal'
 import DocumentComments from '../components/documents/DocumentComments'
 import { TableSkeleton } from '../components/ui/Skeleton'
 
-interface Doc { id: number; title: string; contentJson: any; status: string; version: number; sectorId: number; categoryId?: number | null; updatedAt: string }
+interface Doc { id: number; title: string; contentJson: any; contentType?: string; contentUrl?: string; status: string; version: number; sectorId: number; categoryId?: number | null; updatedAt: string }
 interface Category { id: number; name: string; parentId: number | null; sectorId: number | null }
 interface Sector { id: number; name: string }
 
@@ -48,7 +48,7 @@ export default function DocumentView() {
     catch { alert('Erro ao alterar status') }
   }
 
-  const handleEditSave = async (data: { title: string; contentJson: string; categoryId?: number }) => {
+  const handleEditSave = async (data: { title: string; contentType?: string; contentUrl?: string; contentJson: any; categoryId?: number }) => {
     try { await api.put(`/documents/${id}`, data); setShowEditModal(false); loadDoc() }
     catch (e: any) { alert(e.response?.data?.error || 'Erro ao atualizar') }
   }
@@ -117,12 +117,24 @@ export default function DocumentView() {
       </div>
 
       <div className="card min-h-[300px]">
-        {doc.contentJson && typeof doc.contentJson === 'object' && doc.contentJson.root
-          ? <LexicalViewer contentJson={doc.contentJson} />
-          : doc.contentJson?.text
-            ? <div className="text-slate-700 whitespace-pre-wrap">{doc.contentJson.text}</div>
-            : <p className="text-slate-400 italic">Nenhum conteúdo</p>
-        }
+        {doc.contentType === 'pdf' && doc.contentUrl ? (
+          <iframe src={doc.contentUrl} className="w-full h-[600px] rounded-xl" />
+        ) : doc.contentType === 'pdf' ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+            <span className="text-5xl mb-4">📕</span>
+            <p className="text-sm">Documento em PDF</p>
+          </div>
+        ) : doc.contentType === 'video' && doc.contentUrl ? (
+          <div className="aspect-video">
+            <iframe src={doc.contentUrl.replace('watch?v=', 'embed/')} className="w-full h-full rounded-xl" allowFullScreen />
+          </div>
+        ) : doc.contentJson && typeof doc.contentJson === 'object' && doc.contentJson.root ? (
+          <LexicalViewer contentJson={doc.contentJson} />
+        ) : doc.contentJson?.text ? (
+          <div className="text-slate-700 whitespace-pre-wrap">{doc.contentJson.text}</div>
+        ) : (
+          <p className="text-slate-400 italic">Nenhum conteúdo</p>
+        )}
       </div>
 
       <div className="mt-6 flex justify-between items-center">

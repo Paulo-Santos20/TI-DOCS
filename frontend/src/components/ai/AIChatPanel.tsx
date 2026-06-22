@@ -3,13 +3,33 @@ import api from '../../lib/api'
 
 interface Message { role: 'user' | 'assistant'; content: string }
 
+const STORAGE_KEY = 'ai-chat-messages'
+
+function loadMessages(): Message[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch {
+    return []
+  }
+}
+
+function saveMessages(messages: Message[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+}
+
 export default function AIChatPanel({ onClose }: { onClose: () => void }) {
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>(loadMessages)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  useEffect(() => {
+    if (!loading) saveMessages(messages)
+  }, [messages, loading])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -22,19 +42,32 @@ export default function AIChatPanel({ onClose }: { onClose: () => void }) {
     try {
       const { data } = await api.post('/ai/ask', { question: input })
       setMessages(prev => [...prev, { role: 'assistant', content: data.answer }])
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Erro ao processar sua pergunta.' }])
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Erro ao processar sua pergunta.'
+      setMessages(prev => [...prev, { role: 'assistant', content: msg }])
     } finally {
       setLoading(false)
     }
   }
 
+  const handleClear = () => {
+    setMessages([])
+    localStorage.removeItem(STORAGE_KEY)
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/20 z-50 flex justify-end">
-      <div className="w-full max-w-md bg-white h-full shadow-xl flex flex-col">
+    <div className="fixed right-0 top-0 h-full z-50 w-full max-w-md">
+      <div className="bg-white h-full shadow-xl flex flex-col">
         <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-700">Assistente IA</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+          <h3 className="font-semibold text-slate-700">Jarvis</h3>
+          <div className="flex items-center gap-3">
+            {messages.length > 0 && (
+              <button onClick={handleClear} className="text-xs text-slate-400 hover:text-red-500 transition-colors">
+                Limpar
+              </button>
+            )}
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">

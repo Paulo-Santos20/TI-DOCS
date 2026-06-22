@@ -3,9 +3,13 @@ import { useState } from 'react'
 interface UserFormData {
   name: string
   email: string
-  password: string
+  password?: string
   role: 'admin' | 'user'
   sectorId: number
+}
+
+interface User {
+  id: number; name: string; email: string; role: string; sectorId: number; sectorName: string; isActive: boolean
 }
 
 interface Sector {
@@ -13,17 +17,26 @@ interface Sector {
 }
 
 interface UserFormModalProps {
+  user?: User
   onClose: () => void
   onSave: (data: UserFormData) => void
   sectors: Sector[]
 }
 
-export default function UserFormModal({ onClose, onSave, sectors }: UserFormModalProps) {
-  const [form, setForm] = useState<UserFormData>({ name: '', email: '', password: '', role: 'user', sectorId: sectors[0]?.id || 0 })
+export default function UserFormModal({ user, onClose, onSave, sectors }: UserFormModalProps) {
+  const isEdit = !!user
+  const [form, setForm] = useState<UserFormData>({
+    name: user?.name || '',
+    email: user?.email || '',
+    password: '',
+    role: (user?.role as 'admin' | 'user') || 'user',
+    sectorId: user?.sectorId ?? (sectors[0]?.id || 0),
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.name || !form.email || !form.password || !form.sectorId) return
+    if (!form.name || !form.email || !form.sectorId) return
+    if (!isEdit && !form.password) return
     onSave(form)
   }
 
@@ -31,7 +44,7 @@ export default function UserFormModal({ onClose, onSave, sectors }: UserFormModa
     <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-slate-800">Novo Usuário</h3>
+          <h3 className="text-lg font-semibold text-slate-800">{isEdit ? 'Editar Usuário' : 'Novo Usuário'}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
         </div>
 
@@ -47,9 +60,10 @@ export default function UserFormModal({ onClose, onSave, sectors }: UserFormModa
               className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200 outline-none" required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Senha {isEdit && <span className="text-slate-400 font-normal">(deixe em branco para manter)</span>}</label>
             <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200 outline-none" required />
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200 outline-none"
+              required={!isEdit} />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Setor</label>
@@ -68,7 +82,7 @@ export default function UserFormModal({ onClose, onSave, sectors }: UserFormModa
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
-            <button type="submit" className="btn-primary flex-1">Criar</button>
+            <button type="submit" className="btn-primary flex-1">{isEdit ? 'Salvar' : 'Criar'}</button>
           </div>
         </form>
       </div>

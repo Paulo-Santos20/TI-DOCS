@@ -3,27 +3,37 @@ import AdminTabs from '../components/admin/AdminTabs'
 import UserFormModal from '../components/admin/UserFormModal'
 import api from '../lib/api'
 
-interface User { id: number; name: string; email: string; role: string; sectorName: string; isActive: boolean }
+interface User { id: number; name: string; email: string; role: string; sectorId: number; sectorName: string; isActive: boolean }
 interface Sector { id: number; name: string }
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([])
   const [sectors, setSectors] = useState<Sector[]>([])
   const [showModal, setShowModal] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
 
   const load = () => {
-    api.get('/users').then(({ data }) => setUsers(data)).catch(() => {})
+    api.get('/users').then(({ data }) => setUsers(data.data)).catch(() => {})
     api.get('/sectors').then(({ data }) => setSectors(data)).catch(() => {})
   }
 
   useEffect(load, [])
 
-  const handleCreate = async (data: { name: string; email: string; password: string; role: string; sectorId: number }) => {
+  const handleCreate = async (data: { name: string; email: string; password?: string; role: string; sectorId: number }) => {
     try {
       await api.post('/users', data)
       load()
     } catch {}
     setShowModal(false)
+  }
+
+  const handleEdit = async (data: { name: string; email: string; password?: string; role: string; sectorId: number }) => {
+    if (!editingUser) return
+    try {
+      await api.put(`/users/${editingUser.id}`, data)
+      load()
+    } catch {}
+    setEditingUser(null)
   }
 
   const handleToggleActive = async (id: number, isActive: boolean) => {
@@ -81,14 +91,20 @@ export default function AdminUsers() {
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <button
-                    onClick={() => handleToggleActive(user.id, user.isActive)}
-                    className={`text-xs font-medium transition-colors ${
-                      user.isActive ? 'text-red-500 hover:text-red-700' : 'text-health-600 hover:text-health-700'
-                    }`}
-                  >
-                    {user.isActive ? 'Desativar' : 'Ativar'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setEditingUser(user)}
+                      className="text-xs font-medium text-clinical-600 hover:text-clinical-700 transition-colors">
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => handleToggleActive(user.id, user.isActive)}
+                      className={`text-xs font-medium transition-colors ${
+                        user.isActive ? 'text-red-500 hover:text-red-700' : 'text-health-600 hover:text-health-700'
+                      }`}
+                    >
+                      {user.isActive ? 'Desativar' : 'Ativar'}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -101,6 +117,15 @@ export default function AdminUsers() {
           sectors={sectors}
           onSave={handleCreate}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {editingUser && (
+        <UserFormModal
+          user={editingUser}
+          sectors={sectors}
+          onSave={handleEdit}
+          onClose={() => setEditingUser(null)}
         />
       )}
     </div>

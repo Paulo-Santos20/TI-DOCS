@@ -6,7 +6,7 @@ import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import { db } from '../config/database'
 import { trainingProgress, documents } from '../db/schema'
 import { AppError } from '../middleware/error.middleware'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 
 const router = Router()
 router.use(authMiddleware)
@@ -56,10 +56,15 @@ router.get('/documentos/:id', asyncHandler(async (req: AuthRequest, res) => {
 }))
 
 router.get('/meus', asyncHandler(async (req: AuthRequest, res) => {
-  const progress = await db.select().from(trainingProgress)
-    .where(eq(trainingProgress.userId, req.user!.userId))
-    .orderBy(trainingProgress.updatedAt)
-  res.json(progress)
+  const page = Math.max(1, parseInt(req.query.page as string) || 1)
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50))
+  const offset = (page - 1) * limit
+  const userId = req.user!.userId
+  const [countResult] = await db.select({ count: sql<number>`count(*)::int` }).from(trainingProgress).where(eq(trainingProgress.userId, userId))
+  const data = await db.select().from(trainingProgress)
+    .where(eq(trainingProgress.userId, userId))
+    .orderBy(trainingProgress.updatedAt).limit(limit).offset(offset)
+  res.json({ data, total: countResult.count, page, limit })
 }))
 
 export default router

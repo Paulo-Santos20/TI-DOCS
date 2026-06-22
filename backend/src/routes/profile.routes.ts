@@ -14,7 +14,6 @@ router.use(authMiddleware)
 
 const updateSchema = z.object({
   name: z.string().min(2).max(150).optional(),
-  email: z.string().email().optional(),
   currentPassword: z.string().optional(),
   newPassword: z.string().min(6).optional(),
 })
@@ -30,7 +29,6 @@ router.get('/', asyncHandler(async (req: AuthRequest, res) => {
 router.put('/', validate(updateSchema), asyncHandler(async (req: AuthRequest, res) => {
   const data: Record<string, any> = {}
   if (req.body.name) data.name = req.body.name
-  if (req.body.email) data.email = req.body.email
 
   if (req.body.newPassword) {
     if (!req.body.currentPassword) throw new AppError(400, 'Senha atual é obrigatória')

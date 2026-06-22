@@ -76,13 +76,13 @@ describe('document.service', () => {
       await expect(deleteDocument(999)).rejects.toThrow('Documento não encontrado')
     })
 
-    it('should delete document and versions', async () => {
-      const mockDoc = { id: 1, title: 'Doc', sectorId: 1 }
+    it('should soft delete document', async () => {
+      const mockDoc = { id: 1, title: 'Doc', sectorId: 1, deletedAt: null }
       const limitMock = vi.fn().mockResolvedValue([mockDoc])
       const whereMock = vi.fn().mockReturnValue({ limit: limitMock })
       const fromMock = vi.fn().mockReturnValue({ where: whereMock })
       ;(db.select as any).mockReturnValue({ from: fromMock })
-      ;(db.delete as any).mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) })
+      ;(db.update as any).mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }) })
 
       const result = await deleteDocument(1)
       expect(result.deleted).toBe(true)

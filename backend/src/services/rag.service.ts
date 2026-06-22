@@ -1,6 +1,6 @@
 import { db } from '../config/database'
-import { documentChunks } from '../db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { documentChunks, documents } from '../db/schema'
+import { eq, and, isNull } from 'drizzle-orm'
 import { env } from '../config/environment'
 import { AppError } from '../middleware/error.middleware'
 
@@ -55,28 +55,62 @@ export async function indexDocument(docId: number, text: string) {
   await db.delete(documentChunks).where(eq(documentChunks.documentId, docId))
 
   const chunks = chunkText(text)
-  for (let i = 0; i < chunks.length; i++) {
-    const embedding = await getEmbedding(chunks[i])
-    await db.insert(documentChunks).values({
-      documentId: docId, chunkIndex: i,
-      chunkText: chunks[i], embedding: embedding as any,
-    })
+  const results = await Promise.allSettled(chunks.map(c => getEmbedding(c)))
+
+  const values: any[] = []
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i]
+    if (r.status === 'fulfilled') {
+      values.push({
+        documentId: docId, chunkIndex: i,
+        chunkText: chunks[i], embedding: r.value,
+      })
+    }
   }
+
+  if (values.length > 0) {
+    await db.insert(documentChunks).values(values as any)
+  }
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0, normA = 0, normB = 0
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i]
+    normA += a[i] * a[i]
+    normB += b[i] * b[i]
+  }
+  if (normA === 0 || normB === 0) return 0
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB))
 }
 
 export async function searchRelevantChunks(query: string, sectorId: number, limit = MAX_CHUNKS) {
   const queryEmbedding = await getEmbedding(query)
-  const embeddingStr = `[${queryEmbedding.join(',')}]`
 
-  const results = await db.execute(sql`
-    SELECT dc.chunk_text, dc.document_id, d.title,
-           1 - (dc.embedding <=> ${embeddingStr}::vector) AS similarity
-    FROM document_chunks dc
-    JOIN documents d ON d.id = dc.document_id
-    WHERE d.sector_id = ${sectorId}
-    ORDER BY similarity DESC
-    LIMIT ${limit}
-  `)
+  const rows = await db
+    .select({
+      chunkText: documentChunks.chunkText,
+      documentId: documentChunks.documentId,
+      title: documents.title,
+      embedding: documentChunks.embedding,
+    })
+    .from(documentChunks)
+    .innerJoin(documents, eq(documentChunks.documentId, documents.id))
+    .where(and(
+      eq(documents.sectorId, sectorId),
+      isNull(documents.deletedAt),
+    ))
 
-  return results
+  const scored = rows
+    .filter(r => Array.isArray(r.embedding) && r.embedding.length > 0)
+    .map(r => ({
+      chunk_text: r.chunkText,
+      document_id: r.documentId,
+      title: r.title,
+      similarity: cosineSimilarity(queryEmbedding, r.embedding as number[]),
+    }))
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit)
+
+  return scored
 }

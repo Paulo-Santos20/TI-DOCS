@@ -1,9 +1,9 @@
 import { Router } from 'express'
 import { asyncHandler } from '../lib/async-handler'
-import { db } from '../config/database'
-import { sectors, users } from '../db/schema'
+import { authMiddleware, requireRole } from '../middleware'
 
 const router = Router()
+router.use(authMiddleware, requireRole('admin'))
 
 router.post('/', asyncHandler(async (_req, res) => {
   const { main } = await import('../db/seed')

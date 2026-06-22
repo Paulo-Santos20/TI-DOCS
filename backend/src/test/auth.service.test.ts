@@ -5,13 +5,14 @@ import jwt from 'jsonwebtoken'
 vi.mock('../config/database', () => ({
   db: {
     select: vi.fn(),
-    insert: vi.fn(),
+    insert: vi.fn(() => ({ values: vi.fn().mockResolvedValue([{ token: 'mock-refresh-token', expiresAt: new Date() }]) })),
   },
   connection: { end: vi.fn() },
 }))
 
 vi.mock('../db/schema', () => ({
   users: {},
+  refreshTokens: {},
 }))
 
 import { db } from '../config/database'

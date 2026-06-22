@@ -14,9 +14,9 @@ export default function AdminAssignments() {
   const [newAssign, setNewAssign] = useState({ userId: 0, documentId: 0, dueDate: '' })
 
   const load = () => {
-    api.get('/assignments').then(({ data }) => setAssignments(data)).catch(() => {})
-    api.get('/users').then(({ data }) => setUsers(data)).catch(() => {})
-    api.get('/documents').then(({ data }) => setDocs(data)).catch(() => {})
+    api.get('/assignments').then(({ data }) => setAssignments(data.data)).catch(() => {})
+    api.get('/users').then(({ data }) => setUsers(data.data)).catch(() => {})
+    api.get('/documents').then(({ data }) => setDocs(data.data)).catch(() => {})
   }
 
   useEffect(load, [])

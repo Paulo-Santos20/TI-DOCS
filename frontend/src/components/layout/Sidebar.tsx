@@ -23,9 +23,8 @@ export default function Sidebar() {
     <aside style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
       className={`${collapsed ? 'w-20' : 'w-60'} border-r flex flex-col transition-all duration-300 h-screen sticky top-0`}>
       <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
-        <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
-          <img src="/logo.svg" alt="TI DOCS" className="w-8 h-8" />
-          {!collapsed && <span className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>TI DOCS</span>}
+        <div className={`flex items-center justify-center w-full ${collapsed ? 'justify-center' : 'gap-3'}`}>
+          <img src="/logo.webp" alt="TI DOCS" className="w-28 h-8" />
         </div>
       </div>
 

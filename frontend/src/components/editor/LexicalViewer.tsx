@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { createEditor, LexicalEditor as LexicalEditorType } from 'lexical'
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html'
+import { HeadingNode } from '@lexical/rich-text'
+import { ListNode, ListItemNode } from '@lexical/list'
+import { LinkNode } from '@lexical/link'
 
 interface Props {
   contentJson: any
@@ -18,6 +21,7 @@ export default function LexicalViewer({ contentJson }: Props) {
         namespace: 'tidocs-viewer',
         onError: (e) => console.error(e),
         editable: false,
+        nodes: [HeadingNode, ListNode, ListItemNode, LinkNode],
       })
     }
 

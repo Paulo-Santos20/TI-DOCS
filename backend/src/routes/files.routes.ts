@@ -6,7 +6,7 @@ import { db } from '../config/database'
 import { documents } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { AppError } from '../middleware/error.middleware'
-import { extname } from 'path'
+import { extname, basename } from 'path'
 
 const router = Router()
 router.use(authMiddleware)
@@ -33,7 +33,8 @@ router.get('/:filename', asyncHandler(async (req, res) => {
   }
   const mime = mimeMap[ext] || 'application/octet-stream'
   res.setHeader('Content-Type', mime)
-  res.setHeader('Content-Disposition', `inline; filename="${req.params.filename}"`)
+  const safe = basename(req.params.filename)
+  res.setHeader('Content-Disposition', `inline; filename="${safe}"`)
   streamFile(req.params.filename).pipe(res)
 }))
 

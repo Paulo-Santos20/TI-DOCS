@@ -7,6 +7,9 @@ import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
+import { HeadingNode } from '@lexical/rich-text'
+import { ListNode, ListItemNode } from '@lexical/list'
+import { LinkNode } from '@lexical/link'
 import Toolbar from './Toolbar'
 
 interface Props {
@@ -38,6 +41,7 @@ export default function LexicalEditor({ initialJson, onChange, placeholder = 'Di
     namespace: 'tidocs',
     theme,
     onError,
+    nodes: [HeadingNode, ListNode, ListItemNode, LinkNode],
     editorState: initialJson && initialJson.root ? JSON.stringify(initialJson) : undefined,
   }
 
