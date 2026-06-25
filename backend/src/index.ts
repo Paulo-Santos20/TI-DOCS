@@ -37,6 +37,7 @@ import { setupSocket } from './socket'
 const app = express()
 
 app.set('trust proxy', 1)
+app.set('etag', false)
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }))
 app.use(express.json({ limit: '10mb' }))
@@ -51,6 +52,7 @@ const csrfExcluded = express.Router()
 csrfExcluded.use('/health', healthRoutes)
 csrfExcluded.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 csrfExcluded.use('/docs.json', (_req, res) => res.json(swaggerSpec))
+csrfExcluded.use('/files', uploadLimiter, fileRoutes)
 
 app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api', csrfExcluded)
@@ -63,7 +65,6 @@ app.use('/api/sectors', sectorRoutes)
 app.use('/api/documents', documentRoutes)
 app.use('/api/ai', aiLimiter, aiRoutes)
 app.use('/api/treinamentos', trainingRoutes)
-app.use('/api/files', uploadLimiter, fileRoutes)
 app.use('/api/categories', categoryRoutes)
 app.use('/api/comments', commentRoutes)
 app.use('/api/templates', templateRoutes)
@@ -88,6 +89,13 @@ app.use(errorHandler)
 const server = app.listen(env.PORT, () => {
   logger.info(`TI DOCS backend running on port ${env.PORT}`)
   setupSocket(server)
+
+  fetch(`${env.OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(3000) })
+    .then(res => {
+      if (!res.ok) logger.warn(`IA retornou status ${res.status}`)
+      else logger.info(`IA conectada em ${env.OLLAMA_URL}`)
+    })
+    .catch(() => logger.warn(`IA não disponível em ${env.OLLAMA_URL}`))
 })
 
 process.on('SIGTERM', () => {

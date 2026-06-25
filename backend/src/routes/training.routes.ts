@@ -3,8 +3,9 @@ import { z } from 'zod'
 import { authMiddleware, AuthRequest } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
 import { asyncHandler, parseIdParam } from '../lib/async-handler'
+import { notifyAllAdmins } from '../services/notification.service'
 import { db } from '../config/database'
-import { trainingProgress, documents } from '../db/schema'
+import { trainingProgress, documents, users } from '../db/schema'
 import { AppError } from '../middleware/error.middleware'
 import { eq, and, sql } from 'drizzle-orm'
 
@@ -34,12 +35,20 @@ router.post('/documentos/:id/completar', validate(completeSchema), asyncHandler(
       completedAt: status === 'completed' ? new Date() : existing.completedAt,
       updatedAt: new Date(),
     }).where(eq(trainingProgress.id, existing.id)).returning()
+    if (status === 'completed') {
+      const [user] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1)
+      await notifyAllAdmins('system', `${user?.name || 'Usuário'} concluiu treinamento "${doc.title}"`)
+    }
     res.json(updated)
   } else {
     const [created] = await db.insert(trainingProgress).values({
       userId, documentId: docId, status, score: score ?? 0,
       completedAt: status === 'completed' ? new Date() : null,
     }).returning()
+    if (status === 'completed') {
+      const [user] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1)
+      await notifyAllAdmins('system', `${user?.name || 'Usuário'} concluiu treinamento "${doc.title}"`)
+    }
     res.status(201).json(created)
   }
 }))

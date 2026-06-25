@@ -4,7 +4,7 @@
 
 @layer base {
   html {
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
   }
 
   :root {
@@ -51,11 +51,32 @@
     --purple-50: #faf5ff;
     --purple-600: #9333ea;
 
-    --bg-sidebar: var(--color-white);
-    --bg-header: var(--color-white);
-    --bg-card: var(--color-white);
-    --bg-input: var(--color-white);
-    --border: var(--slate-200);
+    /* Liquid Glass Tokens — Light */
+    --glass-regular: rgba(255, 255, 255, 0.72);
+    --glass-clear: rgba(255, 255, 255, 0.28);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --glass-border-strong: rgba(226, 232, 240, 0.8);
+    --glass-blur: 24px;
+    --glass-saturate: 1.8;
+
+    --glass-tint-h: 210;
+    --glass-tint-s: 25%;
+    --glass-tint-l: 96%;
+
+    --elevation-glass: 10;
+    --elevation-content: 20;
+    --elevation-modal: 30;
+
+    --specular-color: rgba(255, 255, 255, 0.7);
+    --specular-size: 300px;
+
+    --scroll-edge-opacity: 0;
+
+    --bg-sidebar: var(--glass-regular);
+    --bg-header: var(--glass-regular);
+    --bg-card: var(--glass-regular);
+    --bg-input: var(--glass-clear);
+    --border: var(--glass-border-strong);
     --text-primary: var(--slate-800);
     --text-secondary: var(--slate-500);
     --text-muted: var(--slate-400);
@@ -105,11 +126,25 @@
     --purple-50: rgba(147, 51, 234, 0.25);
     --purple-600: #a855f7;
 
-    --bg-sidebar: var(--color-white);
-    --bg-header: var(--color-white);
-    --bg-card: var(--color-white);
-    --bg-input: var(--slate-200);
-    --border: var(--slate-200);
+    /* Liquid Glass Tokens — Dark */
+    --glass-regular: rgba(20, 28, 42, 0.78);
+    --glass-clear: rgba(20, 28, 42, 0.35);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-border-strong: rgba(51, 65, 85, 0.8);
+    --glass-blur: 32px;
+    --glass-saturate: 1.4;
+
+    --glass-tint-h: 220;
+    --glass-tint-s: 20%;
+    --glass-tint-l: 14%;
+
+    --specular-color: rgba(255, 255, 255, 0.08);
+
+    --bg-sidebar: var(--glass-regular);
+    --bg-header: var(--glass-regular);
+    --bg-card: var(--glass-regular);
+    --bg-input: var(--glass-clear);
+    --border: var(--glass-border-strong);
     --text-primary: var(--slate-800);
     --text-secondary: var(--slate-500);
     --text-muted: var(--slate-400);
@@ -117,43 +152,127 @@
 }
 
 @layer components {
+  .glass {
+    background: var(--glass-regular);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border);
+  }
+
+  .glass-clear {
+    background: var(--glass-clear);
+    backdrop-filter: blur(calc(var(--glass-blur) * 1.5)) saturate(calc(var(--glass-saturate) * 0.8));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.5)) saturate(calc(var(--glass-saturate) * 0.8));
+    border: 0.5px solid var(--glass-border);
+  }
+
+  .glass-elevated {
+    background: var(--glass-regular);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
+  }
+
+  .glass-strong {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--glass-regular) 85%, transparent),
+      var(--glass-regular)
+    );
+    backdrop-filter: blur(calc(var(--glass-blur) * 0.8)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.8)) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border-strong);
+  }
+
   .sidebar-item {
     @apply flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200;
+    color: var(--text-secondary);
   }
+
   .sidebar-item-active {
     background: linear-gradient(135deg, var(--clinical-500), var(--clinical-600));
     @apply text-white shadow-lg;
   }
+
   .sidebar-item-inactive {
-    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-800;
+    @apply transition-colors duration-200;
   }
-  .card {
-    @apply rounded-2xl border p-6;
-    background-color: var(--color-white);
-    border-color: var(--slate-200);
+
+  .sidebar-item-inactive:hover {
+    background: color-mix(in srgb, var(--color-white) 40%, transparent);
     color: var(--slate-800);
   }
+
+  .card {
+    @apply rounded-2xl p-6 transition-all duration-200;
+    background: var(--glass-regular);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border-strong);
+    color: var(--text-primary);
+  }
+
+  .card:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+    border-color: var(--glass-border);
+  }
+
   .btn-primary {
-    @apply text-white px-4 py-2.5 rounded-xl font-medium transition-colors duration-200 disabled:opacity-50;
-    background-color: var(--clinical-600);
+    @apply text-white px-4 py-2.5 rounded-xl font-medium transition-all duration-200 disabled:opacity-50;
+    background: linear-gradient(135deg, var(--clinical-600), var(--clinical-500));
+    box-shadow: 0 1px 4px rgba(37, 99, 235, 0.2);
   }
+
   .btn-primary:hover {
-    background-color: var(--clinical-700);
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+    transform: translateY(-1px);
   }
+
   .btn-secondary {
-    @apply px-4 py-2.5 rounded-xl font-medium transition-colors duration-200;
-    background-color: var(--color-white);
-    color: var(--slate-700);
-    border: 1px solid var(--slate-200);
+    @apply px-4 py-2.5 rounded-xl font-medium transition-all duration-200;
+    background: var(--glass-regular);
+    backdrop-filter: blur(12px) saturate(1.5);
+    -webkit-backdrop-filter: blur(12px) saturate(1.5);
+    color: var(--text-primary);
+    border: 1px solid var(--glass-border-strong);
   }
+
   .btn-secondary:hover {
-    background-color: var(--slate-50);
+    background: var(--glass-clear);
+    border-color: var(--glass-border);
+  }
+
+  .glass-input {
+    background: var(--glass-clear);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    border: 1px solid var(--glass-border-strong);
+    @apply rounded-xl outline-none transition-all duration-200;
+    color: var(--text-primary);
+  }
+
+  .glass-input:focus {
+    border-color: var(--clinical-500);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--clinical-500) 20%, transparent);
+    background: var(--glass-regular);
+  }
+
+  .glass-input::placeholder {
+    color: var(--text-muted);
   }
 }
 
 body {
-  background-color: var(--slate-50);
-  color: var(--slate-800);
+  background: linear-gradient(
+    135deg,
+    var(--slate-50) 0%,
+    color-mix(in srgb, var(--slate-50) 60%, var(--health-50)) 50%,
+    var(--slate-50) 100%
+  );
+  background-attachment: fixed;
+  color: var(--text-primary);
+  min-height: 100vh;
 }
 
 @keyframes slide-in {
@@ -161,15 +280,50 @@ body {
   to { transform: translateX(0); opacity: 1; }
 }
 
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes specular-shift {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes glass-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .animate-slide-in {
   animation: slide-in 0.25s ease-out;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--glass-regular) 30%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s ease-out;
 }
 
 .dark .sidebar-item-active {
   background: linear-gradient(135deg, var(--clinical-600), var(--clinical-500));
 }
 .dark .sidebar-item-inactive:hover {
-  background-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--slate-200);
 }
 
@@ -187,4 +341,10 @@ body {
 .dark textarea {
   background-color: var(--bg-input);
   color: var(--slate-800);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--clinical-500);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

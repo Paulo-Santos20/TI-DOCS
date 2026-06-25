@@ -4,6 +4,7 @@ import { authMiddleware, requireRole, AuthRequest } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
 import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import { logAudit } from '../lib/audit'
+import { notifyAllAdmins } from '../services/notification.service'
 import { AppError } from '../middleware/error.middleware'
 import { listUsers, getUser, createUser, updateUser, deleteUser, restoreUser } from '../services/user.service'
 
@@ -44,14 +45,16 @@ router.get('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
 
 router.post('/', requireRole('admin'), validate(createUserSchema), asyncHandler(async (req: AuthRequest, res) => {
   const user = await createUser(req.body)
-  await logAudit({ userId: req.user!.userId, action: 'create', entityType: 'user', entityId: user.id, details: { email: user.email } })
+  await logAudit({ userId: req.user!.userId, action: 'create', entityType: 'user', entityId: user.id, details: { email: user.email }, ip: req.ip, userAgent: req.headers['user-agent'] })
+  await notifyAllAdmins('system', `Usuário "${user.name}" criado`)
   res.status(201).json(user)
 }))
 
 router.put('/:id', requireRole('admin'), validate(updateUserSchema), asyncHandler(async (req: AuthRequest, res) => {
   const id = parseIdParam(req.params.id, 'ID do usuário')
   const user = await updateUser(id, req.body, req.user!.userId)
-  await logAudit({ userId: req.user!.userId, action: 'update', entityType: 'user', entityId: id })
+  await logAudit({ userId: req.user!.userId, action: 'update', entityType: 'user', entityId: id, ip: req.ip, userAgent: req.headers['user-agent'] })
+  await notifyAllAdmins('system', `Usuário "${user.name}" atualizado`)
   res.json(user)
 }))
 
@@ -60,21 +63,24 @@ router.patch('/:id/status', requireRole('admin'), asyncHandler(async (req: AuthR
   const { isActive } = req.body
   if (typeof isActive !== 'boolean') throw new AppError(400, 'isActive deve ser boolean')
   const user = await updateUser(id, { isActive })
-  await logAudit({ userId: req.user!.userId, action: 'toggle_active', entityType: 'user', entityId: id, details: { isActive } })
+  await logAudit({ userId: req.user!.userId, action: 'toggle_active', entityType: 'user', entityId: id, details: { isActive }, ip: req.ip, userAgent: req.headers['user-agent'] })
+  await notifyAllAdmins('system', `Usuário "${user.name}" ${isActive ? 'ativado' : 'desativado'}`)
   res.json(user)
 }))
 
 router.delete('/:id', requireRole('admin'), asyncHandler(async (req: AuthRequest, res) => {
   const id = parseIdParam(req.params.id, 'ID do usuário')
   const result = await deleteUser(id)
-  await logAudit({ userId: req.user!.userId, action: 'delete', entityType: 'user', entityId: id })
+  await logAudit({ userId: req.user!.userId, action: 'delete', entityType: 'user', entityId: id, ip: req.ip, userAgent: req.headers['user-agent'] })
+  await notifyAllAdmins('system', `Usuário #${id} excluído`)
   res.json(result)
 }))
 
 router.post('/:id/restore', requireRole('admin'), asyncHandler(async (req: AuthRequest, res) => {
   const id = parseIdParam(req.params.id, 'ID do usuário')
   const result = await restoreUser(id)
-  await logAudit({ userId: req.user!.userId, action: 'restore', entityType: 'user', entityId: id })
+  await logAudit({ userId: req.user!.userId, action: 'restore', entityType: 'user', entityId: id, ip: req.ip, userAgent: req.headers['user-agent'] })
+  await notifyAllAdmins('system', `Usuário #${id} restaurado`)
   res.json(result)
 }))
 

@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 interface Props { children: ReactNode }
 interface State { hasError: boolean; error?: Error }
@@ -17,17 +18,25 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4" role="alert">
-          <h1 className="text-4xl font-bold text-red-600 mb-4">Algo deu errado</h1>
-          <p className="text-gray-600 mb-2">
-            {this.state.error?.message || 'Um erro inesperado ocorreu.'}
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Recarregar página
-          </button>
+        <div className="flex flex-col items-center justify-center min-h-screen px-4"
+          style={{ background: 'var(--bg)' }} role="alert">
+          <div className="glass-elevated rounded-3xl p-10 max-w-md text-center">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: 'color-mix(in srgb, var(--red-500) 15%, transparent)' }}>
+              <AlertTriangle size={32} style={{ color: 'var(--red-500)' }} />
+            </div>
+            <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Algo deu errado</h1>
+            <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
+              Um erro inesperado ocorreu.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="btn-primary flex items-center gap-2 mx-auto"
+            >
+              <RefreshCw size={16} />
+              Recarregar página
+            </button>
+          </div>
         </div>
       )
     }

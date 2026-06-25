@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
+import { useEscape } from '../../hooks/useEscape'
 
 interface SectorFormModalProps {
   onClose: () => void
@@ -6,32 +8,45 @@ interface SectorFormModalProps {
 }
 
 export default function SectorFormModal({ onClose, onSave }: SectorFormModalProps) {
+  useEscape(onClose)
   const [name, setName] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-    onSave(name.trim())
+    setSubmitting(true)
+    try {
+      await onSave(name.trim())
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0, 0, 0, 0.3)', backdropFilter: 'blur(8px)' }}>
+      <div className="glass-elevated rounded-2xl w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-slate-800">Novo Setor</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+          <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Novo Setor</h3>
+          <button onClick={onClose} className="transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}>
+            <X size={20} />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Setor</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Nome do Setor</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)}
               placeholder="Ex: Farmácia"
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200 outline-none" required />
+              className="glass-input w-full px-3 py-2" required />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
-            <button type="submit" className="btn-primary flex-1">Criar</button>
+            <button type="submit" disabled={submitting} className="btn-primary flex-1">{submitting ? 'Criando...' : 'Criar'}</button>
           </div>
         </form>
       </div>

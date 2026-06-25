@@ -7,7 +7,7 @@ import { db } from '../config/database'
 import { documentComments, users, documents } from '../db/schema'
 import { AppError } from '../middleware/error.middleware'
 import { eq, and, desc } from 'drizzle-orm'
-import { createNotification } from '../services/notification.service'
+import { createNotification, notifyAllAdmins } from '../services/notification.service'
 
 const router = Router()
 router.use(authMiddleware)
@@ -68,6 +68,8 @@ router.patch('/:id/resolve', asyncHandler(async (req: AuthRequest, res) => {
   const [comment] = await db.update(documentComments).set({
     resolved: req.body.resolved ?? true,
   }).where(eq(documentComments.id, id)).returning()
+  const [doc] = await db.select({ title: documents.title }).from(documents).where(eq(documents.id, existing.documentId)).limit(1)
+  await notifyAllAdmins('system', `Comentário resolvido em "${doc?.title || 'documento'}"`, `/documentos/${existing.documentId}`)
   res.json(comment)
 }))
 
@@ -79,7 +81,9 @@ router.delete('/:id', asyncHandler(async (req: AuthRequest, res) => {
   if (comment.userId !== req.user!.userId && req.user!.role !== 'admin') {
     throw new AppError(403, 'Sem permissão')
   }
+  const [doc] = await db.select({ title: documents.title }).from(documents).where(eq(documents.id, comment.documentId)).limit(1)
   await db.delete(documentComments).where(eq(documentComments.id, comment.id))
+  await notifyAllAdmins('system', `Comentário excluído de "${doc?.title || 'documento'}"`, `/documentos/${comment.documentId}`)
   res.json({ deleted: true })
 }))
 

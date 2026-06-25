@@ -5,6 +5,7 @@ import { upload, streamFile } from '../services/file.service'
 import { db } from '../config/database'
 import { documents } from '../db/schema'
 import { eq } from 'drizzle-orm'
+import { notifyAllAdmins } from '../services/notification.service'
 import { AppError } from '../middleware/error.middleware'
 import { extname, basename } from 'path'
 
@@ -13,6 +14,7 @@ router.use(authMiddleware)
 
 router.post('/upload', requireRole('admin'), upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) throw new AppError(400, 'Nenhum arquivo enviado')
+  await notifyAllAdmins('system', `Arquivo enviado: "${req.file.originalname}"`, `/api/files/${req.file.filename}`)
   res.json({
     filename: req.file.filename,
     originalName: req.file.originalname,

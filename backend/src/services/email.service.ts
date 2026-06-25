@@ -12,12 +12,32 @@ const FROM_NAME = 'TI Docs'
 const FROM_EMAIL = process.env.SMTP_FROM || 'noreply@tidocs.com'
 
 let transporter: nodemailer.Transporter | null = null
+let etherealUrl: string | null = null
 
-function getTransporter() {
+async function getTransporter() {
   if (transporter) return transporter
 
   const host = process.env.SMTP_HOST
-  if (!host) return null
+  if (!host) {
+    const testAccount = await nodemailer.createTestAccount()
+    logger.info(`Ethereal email account created: user=${testAccount.user} pass=${testAccount.pass}`)
+    logger.info(`Ethereal SMTP config: host=smtp.ethereal.email port=587 requireTLS=true`)
+    transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      auth: { user: testAccount.user, pass: testAccount.pass },
+      logger: true,
+      debug: true,
+    })
+    transporter.verify().then(() => {
+      logger.info('Ethereal SMTP connection verified successfully')
+    }).catch((err) => {
+      logger.error(`Ethereal SMTP verification failed: ${err.message}`)
+    })
+    return transporter
+  }
 
   transporter = nodemailer.createTransport({
     host,
@@ -33,29 +53,44 @@ function getTransporter() {
 }
 
 export function isEmailConfigured(): boolean {
-  return !!process.env.SMTP_HOST
+  return true
 }
 
 export async function sendEmail(to: string, subject: string, html: string) {
-  const t = getTransporter()
+  const t = await getTransporter()
   if (!t) {
     logger.warn(`Email not sent (SMTP not configured): "${subject}" to ${to}`)
     return false
   }
 
   try {
-    await t.sendMail({
+    logger.info(`Attempting to send email: "${subject}" to ${to} via ${process.env.SMTP_HOST || 'Ethereal'}`)
+    const info = await t.sendMail({
       from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
       to,
       subject,
       html,
     })
-    logger.info(`Email sent: "${subject}" to ${to}`)
+    logger.info(`sendMail response: messageId=${info.messageId} accepted=${info.accepted} rejected=${info.rejected}`)
+    if (!process.env.SMTP_HOST && info.messageId) {
+      const previewUrl = nodemailer.getTestMessageUrl(info)
+      if (previewUrl) {
+        etherealUrl = previewUrl
+        logger.info(`Ethereal preview URL: ${previewUrl}`)
+      } else {
+        logger.warn('Ethereal preview URL not available (getTestMessageUrl returned null)')
+      }
+    }
+    logger.info(`Email sent successfully: "${subject}" to ${to}`)
     return true
-  } catch (err) {
-    logger.error(`Failed to send email to ${to}:`, err)
+  } catch (err: any) {
+    logger.error(`Failed to send email to ${to}: code=${err.code} response=${err.response} message=${err.message}`)
     return false
   }
+}
+
+export function getLastEtherealUrl(): string | null {
+  return etherealUrl
 }
 
 export async function sendPasswordResetEmail(email: string) {
@@ -83,7 +118,11 @@ export async function sendPasswordResetEmail(email: string) {
      <p>Se você não solicitou esta redefinição, ignore este email.</p>`,
   )
 
-  return { sent }
+  return {
+    sent,
+    previewUrl: process.env.SMTP_HOST ? undefined : getLastEtherealUrl(),
+    resetLink: env.NODE_ENV === 'development' ? resetLink : undefined,
+  }
 }
 
 export async function resetPassword(token: string, newPassword: string) {

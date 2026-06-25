@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { authMiddleware, requireRole } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
 import { asyncHandler, parseIdParam } from '../lib/async-handler'
+import { notifyAllAdmins } from '../services/notification.service'
 import { db } from '../config/database'
 import { documents } from '../db/schema'
 import { eq, and, desc } from 'drizzle-orm'
@@ -31,6 +32,7 @@ router.post('/', requireRole('admin'), validate(createSchema), asyncHandler(asyn
     status: 'published', isTemplate: true,
     templateForSectorId: req.body.templateForSectorId || null,
   }).returning()
+  await notifyAllAdmins('system', `Modelo "${tmpl.title}" criado`)
   res.status(201).json(tmpl)
 }))
 
@@ -44,6 +46,7 @@ router.put('/:id', requireRole('admin'), validate(templateSchema), asyncHandler(
   const [updated] = await db.update(documents).set({
     title: req.body.title, contentJson: req.body.contentJson,
   }).where(and(eq(documents.id, id), eq(documents.isTemplate, true))).returning()
+  await notifyAllAdmins('system', `Modelo "${updated.title}" atualizado`)
   res.json(updated)
 }))
 
@@ -52,6 +55,7 @@ router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
   await db.delete(documents).where(and(
     eq(documents.id, id), eq(documents.isTemplate, true),
   ))
+  await notifyAllAdmins('system', `Modelo #${id} excluído`)
   res.json({ deleted: true })
 }))
 

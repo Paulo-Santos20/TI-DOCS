@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import api from '../lib/api'
+import { disconnectSocket } from '../lib/socket'
 
 export interface User {
   id: number; name: string; email: string; role: 'admin' | 'user'; sectorId: number; avatarUrl?: string
@@ -16,15 +17,27 @@ const AuthContext = createContext<AuthContextType>(null!)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('mockUser')
+    const stored = localStorage.getItem('tidocs_user')
     return stored ? JSON.parse(stored) : null
   })
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (user) localStorage.setItem('mockUser', JSON.stringify(user))
-    else localStorage.removeItem('mockUser')
+    if (user) localStorage.setItem('tidocs_user', JSON.stringify(user))
+    else localStorage.removeItem('tidocs_user')
   }, [user])
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token || !user) return
+    api.get('/auth/me').then(({ data }) => {
+      setUser(data)
+    }).catch(() => {
+      localStorage.removeItem('token')
+      localStorage.removeItem('tidocs_user')
+      setUser(null)
+    })
+  }, [])
 
   const login = async (email: string, password: string) => {
     setLoading(true)
@@ -41,8 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
+    disconnectSocket()
     localStorage.removeItem('token')
-    localStorage.removeItem('mockUser')
+    localStorage.removeItem('tidocs_user')
     setUser(null)
   }
 

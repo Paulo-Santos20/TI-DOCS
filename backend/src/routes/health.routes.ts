@@ -6,7 +6,6 @@ import logger from '../config/logger'
 
 const router = Router()
 const startTime = Date.now()
-
 router.get('/', async (_req: Request, res: Response) => {
   const checks: Record<string, string> = {}
   let overall: 'ok' | 'degraded' | 'down' = 'ok'

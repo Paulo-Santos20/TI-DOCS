@@ -1,8 +1,16 @@
 import { env } from '../config/environment'
+import logger from '../config/logger'
 import { AppError } from '../middleware/error.middleware'
 
 interface OllamaGenerateResponse {
   response: string
+}
+
+const AI_ERROR = {
+  QUOTA: 'Limite de uso da IA excedido. Tente novamente mais tarde ou contate o administrador.',
+  AUTH: 'Chave de API da IA inválida ou não configurada. Contate o administrador.',
+  UNAVAILABLE: 'IA não disponível no momento. Tente novamente mais tarde.',
+  TIMEOUT: 'IA não respondeu a tempo. Tente novamente.',
 }
 
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15000) {
@@ -12,15 +20,18 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 1
   try {
     const response = await fetch(url, { ...options, signal: controller.signal })
     if (!response.ok) {
-      throw new AppError(502, `Ollama retornou erro ${response.status}`)
+      if (response.status === 429) throw new AppError(429, AI_ERROR.QUOTA)
+      if (response.status === 401 || response.status === 403) throw new AppError(502, AI_ERROR.AUTH)
+      throw new AppError(502, `IA retornou erro ${response.status}`)
     }
     return response
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      throw new AppError(503, 'IA não respondeu a tempo. Verifique se o Ollama está rodando.')
+      throw new AppError(503, AI_ERROR.TIMEOUT)
     }
     if (err instanceof AppError) throw err
-    throw new AppError(503, `Não foi possível conectar ao Ollama: ${err.message}`)
+    logger.error(`IA connection failed: ${err.message}`)
+    throw new AppError(503, AI_ERROR.UNAVAILABLE)
   } finally {
     clearTimeout(timer)
   }

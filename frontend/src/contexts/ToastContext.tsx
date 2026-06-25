@@ -6,6 +6,8 @@ export interface Toast {
   id: number
   message: string
   type: ToastType
+  createdAt: number
+  duration: number
 }
 
 interface ToastContextType {
@@ -27,9 +29,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const addToast = useCallback((message: string, type: ToastType = 'info', duration = 4000) => {
     const id = nextId++
-    setToasts(prev => [...prev, { id, message, type }])
-    setTimeout(() => removeToast(id), duration)
-  }, [removeToast])
+    setToasts(prev => [...prev, { id, message, type, createdAt: Date.now(), duration }])
+  }, [])
 
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>

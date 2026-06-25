@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { authMiddleware, requireRole } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
 import { asyncHandler } from '../lib/async-handler'
+import { notifyAllAdmins } from '../services/notification.service'
 import { db } from '../config/database'
 import { systemConfigs } from '../db/schema'
 import { eq, sql } from 'drizzle-orm'
@@ -26,6 +27,7 @@ router.put('/', requireRole('admin'), validate(configSchema), asyncHandler(async
     await db.insert(systemConfigs).values({ key, value, updatedAt: now as any })
       .onConflictDoUpdate({ target: systemConfigs.key, set: { value, updatedAt: now as any } })
   }
+  await notifyAllAdmins('system', 'Configurações do sistema atualizadas')
   res.json({ success: true })
 }))
 

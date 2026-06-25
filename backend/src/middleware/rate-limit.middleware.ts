@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit'
+import { env } from '../config/environment'
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -34,7 +35,7 @@ export const searchLimiter = rateLimit({
 
 export const uploadLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 5,
+  max: env.UPLOAD_RATE_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Muitos uploads. Tente novamente em 1 minuto.' },

@@ -4,7 +4,11 @@ import { authMiddleware, requireRole, AuthRequest } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
 import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import { logAudit } from '../lib/audit'
+import { notifyAllAdmins } from '../services/notification.service'
 import * as docService from '../services/document.service'
+import { db } from '../config/database'
+import { documents } from '../db/schema'
+import { eq } from 'drizzle-orm'
 import { AppError } from '../middleware/error.middleware'
 import { createNotification } from '../services/notification.service'
 
@@ -42,7 +46,8 @@ router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
 
 router.post('/', requireRole('admin'), validate(createSchema), asyncHandler(async (req: AuthRequest, res) => {
   const doc = await docService.createDocument({ ...req.body, authorId: req.user!.userId })
-  await logAudit({ userId: req.user!.userId, action: 'create', entityType: 'document', entityId: doc.id, details: { title: doc.title } })
+  await logAudit({ userId: req.user!.userId, action: 'create', entityType: 'document', entityId: doc.id, details: { title: doc.title }, ip: req.ip, userAgent: req.headers['user-agent'] })
+  await notifyAllAdmins('system', `Documento "${doc.title}" criado`, `/documentos/${doc.id}`)
   res.status(201).json(doc)
 }))
 
@@ -68,14 +73,17 @@ const updateSchema = z.object({
 router.put('/:id', requireRole('admin'), validate(updateSchema), asyncHandler(async (req: AuthRequest, res) => {
   const id = parseIdParam(req.params.id, 'ID do documento')
   const doc = await docService.updateDocument(id, req.body, req.user!.userId)
-  await logAudit({ userId: req.user!.userId, action: 'update', entityType: 'document', entityId: doc.id })
+  await logAudit({ userId: req.user!.userId, action: 'update', entityType: 'document', entityId: doc.id, ip: req.ip, userAgent: req.headers['user-agent'] })
+  await notifyAllAdmins('system', `Documento "${doc.title}" atualizado`, `/documentos/${id}`)
   res.json(doc)
 }))
 
 router.delete('/:id', requireRole('admin'), asyncHandler(async (req: AuthRequest, res) => {
   const id = parseIdParam(req.params.id, 'ID do documento')
+  const [doc] = await db.select({ title: documents.title }).from(documents).where(eq(documents.id, id)).limit(1)
   const result = await docService.deleteDocument(id)
-  await logAudit({ userId: req.user!.userId, action: 'delete', entityType: 'document', entityId: id })
+  await logAudit({ userId: req.user!.userId, action: 'delete', entityType: 'document', entityId: id, ip: req.ip, userAgent: req.headers['user-agent'] })
+  await notifyAllAdmins('system', `Documento "${doc?.title || '#' + id}" excluído`)
   res.json(result)
 }))
 
@@ -86,7 +94,7 @@ router.patch('/:id/status', requireRole('admin'), asyncHandler(async (req: AuthR
     throw new AppError(400, 'Status deve ser draft, review, published ou archived')
   }
   const doc = await docService.updateDocumentStatus(id, status)
-  await logAudit({ userId: req.user!.userId, action: 'status_change', entityType: 'document', entityId: id, details: { status } })
+  await logAudit({ userId: req.user!.userId, action: 'status_change', entityType: 'document', entityId: id, details: { status }, ip: req.ip, userAgent: req.headers['user-agent'] })
 
   if (doc.authorId !== req.user!.userId) {
     await createNotification({
@@ -103,7 +111,8 @@ router.patch('/:id/status', requireRole('admin'), asyncHandler(async (req: AuthR
 router.post('/:id/restore', requireRole('admin'), asyncHandler(async (req: AuthRequest, res) => {
   const id = parseIdParam(req.params.id, 'ID do documento')
   const result = await docService.restoreDocument(id)
-  await logAudit({ userId: req.user!.userId, action: 'restore', entityType: 'document', entityId: id })
+  await logAudit({ userId: req.user!.userId, action: 'restore', entityType: 'document', entityId: id, ip: req.ip, userAgent: req.headers['user-agent'] })
+  await notifyAllAdmins('system', `Documento #${id} restaurado`, `/documentos/${id}`)
   res.json(result)
 }))
 

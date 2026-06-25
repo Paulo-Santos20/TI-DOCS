@@ -1,20 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import AdminTabs from '../components/admin/AdminTabs'
 import CategoryFormModal from '../components/admin/CategoryFormModal'
+import { CardSkeleton } from '../components/ui/Skeleton'
 import api from '../lib/api'
+import { useToast } from '../contexts/ToastContext'
+import { FolderOpen, Folder } from 'lucide-react'
 
 interface Category {
   id: number; name: string; description: string | null
   parentId: number | null; sectorId: number | null
   children?: Category[]
 }
-
-const MOCK_SECTORS = [
-  { id: 1, name: 'TI' },
-  { id: 2, name: 'Enfermagem' },
-  { id: 3, name: 'Medicina' },
-  { id: 4, name: 'Administrativo' },
-]
+interface Sector { id: number; name: string }
 
 function buildTree(cats: Category[]): (Category & { children: Category[] })[] {
   const map = new Map(cats.map(c => [c.id, { ...c, children: [] as Category[] }]))
@@ -30,66 +27,90 @@ function buildTree(cats: Category[]): (Category & { children: Category[] })[] {
 }
 
 export default function AdminCategories() {
+  const { addToast } = useToast()
   const [categories, setCategories] = useState<Category[]>([])
+  const [sectors, setSectors] = useState<Sector[]>([])
+  const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
 
   const load = () => {
-    api.get('/categories').then(({ data }) => setCategories(data)).catch(() => {})
+    setLoading(true)
+    api.get('/categories').then(({ data }) => setCategories(data)).catch(() => addToast('Erro ao carregar categorias', 'error'))
+      .finally(() => setLoading(false))
   }
 
   useEffect(load, [])
+  useEffect(() => { api.get('/sectors').then(({ data }) => setSectors(data)).catch(() => {}) }, [])
 
-  const tree = buildTree(categories)
+  const tree = useMemo(() => buildTree(categories), [categories])
 
   const handleSave = async (data: { name: string; description?: string; parentId?: number; sectorId?: number }) => {
     try {
       if (editing) {
         await api.put(`/categories/${editing.id}`, data)
+        addToast('Categoria atualizada', 'success')
       } else {
         await api.post('/categories', data)
+        addToast('Categoria criada', 'success')
       }
       load()
-    } catch {}
+    } catch {
+      addToast('Erro ao salvar categoria', 'error')
+    }
     setShowModal(false)
     setEditing(null)
   }
 
   const handleDelete = async (id: number) => {
     const hasChildren = categories.some(c => c.parentId === id)
-    if (hasChildren) { alert('Remova as subpastas antes de excluir esta pasta.'); return }
+    if (hasChildren) { addToast('Remova as subpastas antes de excluir esta pasta.', 'error'); return }
     try {
       await api.delete(`/categories/${id}`)
+      addToast('Categoria excluída', 'success')
       load()
-    } catch {}
+    } catch {
+      addToast('Erro ao excluir categoria', 'error')
+    }
   }
 
-  const sectorName = (id: number | null) => id ? MOCK_SECTORS.find(s => s.id === id)?.name || '-' : 'Global'
+  const sectorName = (id: number | null) => id ? sectors.find(s => s.id === id)?.name || '-' : 'Global'
 
   const renderTree = (nodes: Category[], depth = 0) => (
     nodes.map(cat => (
       <div key={cat.id}>
         <div
-          className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 rounded-xl transition-colors group"
+          className="flex items-center justify-between px-4 py-3 rounded-xl transition-colors group"
           style={{ paddingLeft: `${16 + depth * 24}px` }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--slate-100)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <span className="text-lg shrink-0">{depth === 0 ? '📁' : '📂'}</span>
+            {depth === 0
+              ? <FolderOpen size={20} className="shrink-0" style={{ color: 'var(--clinical-500)' }} />
+              : <Folder size={20} className="shrink-0" style={{ color: 'var(--text-muted)' }} />
+            }
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-700 truncate">{cat.name}</p>
-              <p className="text-xs text-slate-400 truncate">{cat.description || 'Sem descrição'}</p>
+              <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{cat.name}</p>
+              <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{cat.description || 'Sem descrição'}</p>
             </div>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 shrink-0">
+            <span className="text-xs px-2 py-0.5 rounded-full shrink-0" style={{ color: 'var(--text-muted)', background: 'color-mix(in srgb, var(--text-muted) 10%, transparent)' }}>
               {sectorName(cat.sectorId)}
             </span>
           </div>
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <button onClick={() => { setEditing(cat); setShowModal(true) }}
-              className="text-xs text-slate-400 hover:text-clinical-600 transition-colors">
+              className="text-xs transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--clinical-600)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}>
               Editar
             </button>
             <button onClick={() => handleDelete(cat.id)}
-              className="text-xs text-slate-400 hover:text-red-500 transition-colors">
+              className="text-xs transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--red-500)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}>
               Excluir
             </button>
           </div>
@@ -102,22 +123,26 @@ export default function AdminCategories() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Administração</h1>
-        <p className="text-slate-500 mt-1">Gerencie usuários, setores e documentos</p>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Administração</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Gerencie usuários, setores e documentos</p>
       </div>
 
       <AdminTabs />
 
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-slate-500">{categories.length} categorias</p>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{categories.length} categorias</p>
         <button onClick={() => { setEditing(null); setShowModal(true) }} className="btn-primary text-sm">
           + Nova Pasta
         </button>
       </div>
 
       <div className="card p-4">
-        {tree.length === 0 ? (
-          <p className="text-sm text-slate-400 py-8 text-center">Nenhuma pasta criada ainda</p>
+        {loading ? (
+          <div className="space-y-3">
+            {[1,2,3,4].map(i => <CardSkeleton key={i} />)}
+          </div>
+        ) : tree.length === 0 ? (
+          <p className="text-sm text-center py-8" style={{ color: 'var(--text-muted)' }}>Nenhuma pasta criada ainda</p>
         ) : (
           renderTree(tree)
         )}
@@ -126,7 +151,7 @@ export default function AdminCategories() {
       {showModal && (
         <CategoryFormModal
           categories={categories}
-          sectors={MOCK_SECTORS}
+          sectors={sectors}
           editing={editing}
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditing(null) }}

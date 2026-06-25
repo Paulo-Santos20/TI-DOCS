@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../lib/api'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function Profile() {
   const { user, updateUser } = useAuth()
@@ -10,10 +11,14 @@ export default function Profile() {
   const [avatarFile, setAvatarFile] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
   const avatarSrc = avatarFile || user?.avatarUrl || null
 
   useEffect(() => {
-    if (user)     setForm(f => ({ ...f, name: user.name }))
+    if (user) setForm(f => ({ ...f, name: user.name, email: user.email }))
   }, [user])
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,7 +55,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto animate-fade-up">
       <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>Meu Perfil</h1>
 
       <div className="card mb-6">
@@ -59,7 +64,8 @@ export default function Profile() {
             {avatarSrc ? (
               <img src={avatarSrc} alt="Avatar" className="w-16 h-16 rounded-full object-cover" />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-clinical-500 flex items-center justify-center text-white text-2xl font-bold">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold"
+                style={{ background: 'var(--clinical-500)' }}>
                 {user?.name?.charAt(0) || '?'}
               </div>
             )}
@@ -78,15 +84,13 @@ export default function Profile() {
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Nome</label>
             <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border outline-none focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200"
-              style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+              className="glass-input w-full px-3 py-2" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Email</label>
             <input type="email" value={form.email} disabled
-              className="w-full px-3 py-2 rounded-xl border opacity-60 cursor-not-allowed"
-              style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
-            <p className="text-xs text-slate-400 mt-1">Email não pode ser alterado pelo perfil. Solicite ao administrador.</p>
+              className="glass-input w-full px-3 py-2 opacity-60 cursor-not-allowed" />
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Email não pode ser alterado pelo perfil. Solicite ao administrador.</p>
           </div>
 
           <hr style={{ borderColor: 'var(--border)' }} />
@@ -94,22 +98,52 @@ export default function Profile() {
 
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Senha Atual</label>
-            <input type="password" value={form.currentPassword} onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border outline-none focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200"
-              style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+            <div className="relative">
+              <input type={showCurrentPassword ? 'text' : 'password'}
+                value={form.currentPassword} onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))}
+                className="glass-input w-full px-3 py-2 pr-10"
+                autoComplete="current-password" />
+              <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors" tabIndex={-1}
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}>
+                {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Nova Senha</label>
-              <input type="password" value={form.newPassword} onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl border outline-none focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200"
-                style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+              <div className="relative">
+                <input type={showNewPassword ? 'text' : 'password'}
+                  value={form.newPassword} onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))}
+                  className="glass-input w-full px-3 py-2 pr-10"
+                  autoComplete="new-password" />
+                <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors" tabIndex={-1}
+                  style={{ color: 'var(--text-muted)' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}>
+                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Confirmar Senha</label>
-              <input type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl border outline-none focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200"
-                style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+              <div className="relative">
+                <input type={showConfirmPassword ? 'text' : 'password'}
+                  value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                  className="glass-input w-full px-3 py-2 pr-10"
+                  autoComplete="new-password" />
+                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors" tabIndex={-1}
+                  style={{ color: 'var(--text-muted)' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}>
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
           </div>
 

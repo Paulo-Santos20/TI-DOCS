@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react'
 import AdminTabs from '../components/admin/AdminTabs'
 import SectorFormModal from '../components/admin/SectorFormModal'
+import { TableSkeleton } from '../components/ui/Skeleton'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
 import api from '../lib/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface Sector { id: number; name: string; createdAt: string }
 
 export default function AdminSectors() {
+  const { addToast } = useToast()
   const [sectors, setSectors] = useState<Sector[]>([])
+  const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
 
   const load = () => {
-    api.get('/sectors').then(({ data }) => setSectors(data)).catch(() => {})
+    setLoading(true)
+    api.get('/sectors').then(({ data }) => setSectors(data)).catch(() => addToast('Erro ao carregar setores', 'error'))
+      .finally(() => setLoading(false))
   }
 
   useEffect(load, [])
@@ -18,52 +26,68 @@ export default function AdminSectors() {
   const handleCreate = async (name: string) => {
     try {
       await api.post('/sectors', { name })
+      addToast('Setor criado', 'success')
       load()
-    } catch {}
+    } catch {
+      addToast('Erro ao criar setor', 'error')
+    }
     setShowModal(false)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Tem certeza que deseja excluir este setor?')) return
+  const handleDelete = async () => {
+    if (deleteTarget === null) return
     try {
-      await api.delete(`/sectors/${id}`)
+      await api.delete(`/sectors/${deleteTarget}`)
+      addToast('Setor excluído', 'success')
       load()
-    } catch {}
+    } catch {
+      addToast('Erro ao excluir setor', 'error')
+    }
+    setDeleteTarget(null)
   }
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Administração</h1>
-        <p className="text-slate-500 mt-1">Gerencie usuários, setores e documentos</p>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Administração</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Gerencie usuários, setores e documentos</p>
       </div>
 
       <AdminTabs />
 
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-slate-500">{sectors.length} setores</p>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{sectors.length} setores</p>
         <button onClick={() => setShowModal(true)} className="btn-primary text-sm">+ Novo Setor</button>
       </div>
 
-      <div className="card p-0 overflow-hidden">
-        <table className="w-full">
+      {loading ? (
+        <TableSkeleton rows={4} />
+      ) : (
+      <div className="card p-0 overflow-x-auto">
+        <table className="w-full min-w-[400px]">
           <thead>
-            <tr className="border-b border-slate-200">
-              <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Nome</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Criado em</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-slate-500">Ações</th>
+            <tr style={{ borderBottom: '1px solid var(--glass-border-strong)' }}>
+              <th className="text-left px-6 py-4 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Nome</th>
+              <th className="text-left px-6 py-4 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Criado em</th>
+              <th className="text-left px-6 py-4 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Ações</th>
             </tr>
           </thead>
           <tbody>
             {sectors.map(sector => (
-              <tr key={sector.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4 text-sm font-medium text-slate-700">{sector.name}</td>
-                <td className="px-6 py-4 text-sm text-slate-500">
+              <tr key={sector.id} style={{ borderBottom: '1px solid var(--glass-border-strong)' }}
+                className="transition-colors"
+                onMouseEnter={e => { e.currentTarget.style.background = 'color-mix(in srgb, var(--color-white) 30%, transparent)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                <td className="px-6 py-4 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{sector.name}</td>
+                <td className="px-6 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
                   {new Date(sector.createdAt).toLocaleDateString('pt-BR')}
                 </td>
                 <td className="px-6 py-4">
-                  <button onClick={() => handleDelete(sector.id)}
-                    className="text-sm text-red-500 hover:text-red-700 transition-colors">
+                  <button onClick={() => setDeleteTarget(sector.id)}
+                    className="text-sm transition-colors"
+                    style={{ color: 'var(--red-500)' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--red-700)' }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--red-500)' }}>
                     Excluir
                   </button>
                 </td>
@@ -72,6 +96,16 @@ export default function AdminSectors() {
           </tbody>
         </table>
       </div>
+      )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Excluir setor"
+        message="Tem certeza que deseja excluir este setor?"
+        confirmLabel="Excluir"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {showModal && (
         <SectorFormModal onSave={handleCreate} onClose={() => setShowModal(false)} />

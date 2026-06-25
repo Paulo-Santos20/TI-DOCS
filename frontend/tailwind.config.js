@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', '"Helvetica Neue"', 'Arial', 'sans-serif'],
       },
       colors: {
         slate: {
@@ -60,6 +60,15 @@ export default {
         },
         white: 'var(--color-white)',
         black: 'var(--color-black)',
+      },
+      backdropBlur: {
+        glass: 'var(--glass-blur)',
+      },
+      animation: {
+        'shimmer': 'shimmer 2s ease-in-out infinite',
+        'fade-up': 'fade-up 0.4s ease-out',
+        'specular': 'specular-shift 8s linear infinite',
+        'glass-spin': 'glass-spin 0.8s linear infinite',
       },
     },
   },

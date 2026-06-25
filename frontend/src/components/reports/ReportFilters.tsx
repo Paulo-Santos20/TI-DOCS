@@ -44,15 +44,15 @@ export default function ReportFilters({ sectors, people, isAdmin, onFilter }: Re
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm mb-6">
+    <div className="flex flex-wrap items-end gap-3 p-4 card mb-6">
       {isAdmin && (
         <>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Setor</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Setor</label>
             <select
               value={filters.sector}
               onChange={e => setFilters(f => ({ ...f, sector: e.target.value }))}
-              className="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200 outline-none"
+              className="glass-input px-3 py-2 text-sm"
             >
               <option value="all">Todos os setores</option>
               {sectors.map(s => <option key={s} value={s}>{s}</option>)}
@@ -60,11 +60,11 @@ export default function ReportFilters({ sectors, people, isAdmin, onFilter }: Re
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Pessoa</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Pessoa</label>
             <select
               value={filters.person}
               onChange={e => setFilters(f => ({ ...f, person: e.target.value }))}
-              className="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200 outline-none"
+              className="glass-input px-3 py-2 text-sm"
             >
               <option value="all">Todas as pessoas</option>
               {people.map(p => <option key={p} value={p}>{p}</option>)}
@@ -74,22 +74,22 @@ export default function ReportFilters({ sectors, people, isAdmin, onFilter }: Re
       )}
 
       <div>
-        <label className="block text-xs font-medium text-slate-500 mb-1">Período</label>
+        <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Período</label>
         <select
           value={filters.period}
           onChange={e => setFilters(f => ({ ...f, period: e.target.value }))}
-          className="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200 outline-none"
+          className="glass-input px-3 py-2 text-sm"
         >
           {PERIOD_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
+        <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Status</label>
         <select
           value={filters.status}
           onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
-          className="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:border-clinical-500 focus:ring-2 focus:ring-clinical-200 outline-none"
+          className="glass-input px-3 py-2 text-sm"
         >
           {STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>

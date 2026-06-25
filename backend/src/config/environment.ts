@@ -26,6 +26,7 @@ export const env = {
   PORT: parseIntSafe(process.env.PORT, 3001),
   NODE_ENV: process.env.NODE_ENV || 'development',
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  UPLOAD_RATE_LIMIT: parseIntSafe(process.env.UPLOAD_RATE_LIMIT, 10),
   UPLOAD_DIR: process.env.UPLOAD_DIR || './uploads',
   MAX_FILE_SIZE: parseIntSafe(process.env.MAX_FILE_SIZE, 10485760),
   DB_POOL_MAX: parseIntSafe(process.env.DB_POOL_MAX, 20),

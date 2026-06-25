@@ -8,6 +8,8 @@ import ErrorBoundary from './components/ErrorBoundary'
 import LoadingSpinner from './components/ui/LoadingSpinner'
 
 const Login = lazy(() => import('./pages/Login'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Documents = lazy(() => import('./pages/Documents'))
 const DocumentView = lazy(() => import('./pages/DocumentView'))
@@ -49,6 +51,8 @@ export default function App() {
         <SuspenseWrapper>
           <Routes>
             <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+            <Route path="/esqueci-senha" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
             <Route path="/documentos" element={<ProtectedRoute><MainLayout><Documents /></MainLayout></ProtectedRoute>} />
             <Route path="/documentos/:id" element={<ProtectedRoute><MainLayout><DocumentView /></MainLayout></ProtectedRoute>} />

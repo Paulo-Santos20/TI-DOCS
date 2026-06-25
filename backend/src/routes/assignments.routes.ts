@@ -4,9 +4,9 @@ import { authMiddleware, requireRole, AuthRequest } from '../middleware'
 import { validate } from '../middleware/validate.middleware'
 import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import { db } from '../config/database'
-import { trainingAssignments, documents } from '../db/schema'
+import { trainingAssignments, documents, users } from '../db/schema'
 import { eq, desc, sql } from 'drizzle-orm'
-import { createNotification } from '../services/notification.service'
+import { createNotification, notifyAllAdmins } from '../services/notification.service'
 
 const router = Router()
 router.use(authMiddleware)
@@ -59,7 +59,19 @@ router.post('/', requireRole('admin'), validate(createSchema), asyncHandler(asyn
 
 router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
   const id = parseIdParam(req.params.id, 'ID da atribuição')
+  const [assignment] = await db.select({
+    userId: trainingAssignments.userId,
+    documentId: trainingAssignments.documentId,
+    userName: users.name,
+    docTitle: documents.title,
+  }).from(trainingAssignments)
+    .leftJoin(users, eq(trainingAssignments.userId, users.id))
+    .leftJoin(documents, eq(trainingAssignments.documentId, documents.id))
+    .where(eq(trainingAssignments.id, id)).limit(1)
   await db.delete(trainingAssignments).where(eq(trainingAssignments.id, id))
+  if (assignment) {
+    await notifyAllAdmins('system', `Atribuição de "${assignment.userName || 'usuário'}" para "${assignment.docTitle || 'documento'}" removida`)
+  }
   res.json({ deleted: true })
 }))
 
