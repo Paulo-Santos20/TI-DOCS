@@ -5,6 +5,10 @@ import { validate } from '../middleware/validate.middleware'
 import { asyncHandler, parseIdParam } from '../lib/async-handler'
 import { notifyAllAdmins } from '../services/notification.service'
 import * as docService from '../services/document.service'
+import { db } from '../config/database'
+import { documentCategories, documents, sectors } from '../db/schema'
+import { AppError } from '../middleware/error.middleware'
+import { eq, and, isNull, desc, inArray } from 'drizzle-orm'
 
 const router = Router()
 router.use(authMiddleware)
@@ -29,6 +33,58 @@ router.get('/', asyncHandler(async (req: AuthRequest, res) => {
     : req.user!.sectorId
   const categories = await docService.listCategories(sectorId)
   res.json(categories)
+}))
+
+router.get('/:id', asyncHandler(async (req: AuthRequest, res) => {
+  const id = parseInt(req.params.id)
+  const [cat] = await db.select().from(documentCategories).where(eq(documentCategories.id, id)).limit(1)
+  if (!cat) throw new AppError(404, 'Categoria não encontrada')
+
+  if (req.user!.role !== 'admin') {
+    const userSector = await db.select({ sectorId: documentCategories.sectorId })
+      .from(documentCategories).where(eq(documentCategories.id, id)).limit(1)
+    if (userSector.length && userSector[0].sectorId && userSector[0].sectorId !== req.user!.sectorId) {
+      throw new AppError(403, 'Acesso negado')
+    }
+  }
+
+  const children = await db.select().from(documentCategories)
+    .where(eq(documentCategories.parentId, id))
+    .orderBy(documentCategories.name)
+
+  const childIds = children.map(c => c.id)
+  const allIds = [id, ...childIds]
+
+  const docs = await db.select({
+    id: documents.id, title: documents.title, status: documents.status,
+    version: documents.version, contentType: documents.contentType,
+    contentUrl: documents.contentUrl, contentJson: documents.contentJson,
+    sectorName: sectors.name, categoryId: documents.categoryId,
+    updatedAt: documents.updatedAt, createdAt: documents.createdAt,
+  }).from(documents)
+    .leftJoin(sectors, eq(documents.sectorId, sectors.id))
+    .where(and(
+      isNull(documents.deletedAt),
+      inArray(documents.categoryId, allIds),
+      eq(documents.isTemplate, false),
+    ))
+    .orderBy(desc(documents.updatedAt))
+
+  const docsByCat: Record<number, typeof docs> = {}
+  for (const d of docs) {
+    const cid = d.categoryId || id
+    if (!docsByCat[cid]) docsByCat[cid] = []
+    docsByCat[cid].push(d)
+  }
+
+  res.json({
+    ...cat,
+    documents: docsByCat[id] || [],
+    children: children.map(c => ({
+      ...c,
+      documents: docsByCat[c.id] || [],
+    })),
+  })
 }))
 
 router.post('/', requireRole('admin'), validate(createSchema), asyncHandler(async (req: AuthRequest, res) => {

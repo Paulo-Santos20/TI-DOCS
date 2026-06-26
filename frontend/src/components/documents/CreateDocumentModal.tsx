@@ -2,7 +2,7 @@ import { useState } from 'react'
 import LexicalEditor from '../editor/LexicalEditor'
 import api from '../../lib/api'
 import { useToast } from '../../contexts/ToastContext'
-import { X, FolderOpen } from 'lucide-react'
+import { X, FolderOpen, Upload } from 'lucide-react'
 import { useEscape } from '../../hooks/useEscape'
 
 interface Sector { id: number; name: string }
@@ -11,7 +11,7 @@ interface Category { id: number; name: string; parentId: number | null; sectorId
 interface Props {
   sectors: Sector[]
   categories: Category[]
-  onSave: (data: { title: string; contentJson: any; contentType?: string; contentUrl?: string; sectorId: number; categoryId?: number }) => void
+  onSave: (data: { title: string; contentJson: any; contentType?: string; contentUrl?: string; imageUrl?: string; summary?: string; sectorId: number; categoryId?: number }) => void
   onClose: () => void
 }
 
@@ -24,10 +24,29 @@ export default function CreateDocumentModal({ sectors, categories, onSave, onClo
     sectorId: sectors[0]?.id || 0,
     categoryId: 0,
     contentType: 'rich-text' as 'rich-text' | 'pdf' | 'video',
+    summary: '',
   })
   const [content, setContent] = useState<any>(null)
   const [contentUrl, setContentUrl] = useState('')
   const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
+
+  const findRootSectorId = (catId: number): number | null => {
+    const cat = categories.find(c => c.id === catId)
+    if (!cat) return null
+    if (!cat.parentId) return cat.sectorId
+    return findRootSectorId(cat.parentId)
+  }
+
+  const handleCategoryChange = (catId: number) => {
+    setForm(f => ({ ...f, categoryId: catId }))
+    const rootSectorId = findRootSectorId(catId)
+    if (rootSectorId) {
+      setForm(f => ({ ...f, categoryId: catId, sectorId: rootSectorId }))
+    }
+  }
 
   const sectorFiltered = categories.filter(c => !c.sectorId || c.sectorId === form.sectorId)
   const filteredCats = [...sectorFiltered].sort((a, b) => {
@@ -36,19 +55,47 @@ export default function CreateDocumentModal({ sectors, categories, onSave, onClo
     return a.name.localeCompare(b.name)
   })
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+    setUploadedImageUrl(null)
+  }
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return uploadedImageUrl || null
+    const fd = new FormData()
+    fd.append('image', imageFile)
+    try {
+      const { data } = await api.post('/files/upload-image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data.url
+    } catch (err: any) {
+      addToast(err?.response?.data?.error || 'Erro ao enviar imagem', 'error')
+      return null
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title || form.title.length < 3) return
 
-    let payload: any = {
-      title: form.title,
-      contentType: form.contentType,
-      sectorId: form.sectorId,
-      categoryId: form.categoryId > 0 ? form.categoryId : undefined,
-    }
-
     setSubmitting(true)
     try {
+      const imageUrl = await uploadImage()
+      if (imageFile && !imageUrl) return
+
+      const payload: any = {
+        title: form.title,
+        contentType: form.contentType,
+        sectorId: form.sectorId,
+        categoryId: form.categoryId > 0 ? form.categoryId : undefined,
+        summary: form.summary || undefined,
+        imageUrl: imageUrl || undefined,
+      }
+
       if (form.contentType === 'rich-text') {
         payload.contentJson = content || {}
       } else if (form.contentType === 'pdf') {
@@ -56,15 +103,10 @@ export default function CreateDocumentModal({ sectors, categories, onSave, onClo
         if (pdfFile) {
           const fd = new FormData()
           fd.append('file', pdfFile)
-          try {
-            const { data: uploadResult } = await api.post('/files/upload', fd, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-            })
-            payload.contentUrl = uploadResult.url
-          } catch (err: any) {
-            addToast(err?.response?.data?.error || 'Erro ao enviar PDF', 'error')
-            return
-          }
+          const { data: uploadResult } = await api.post('/files/upload', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+          payload.contentUrl = uploadResult.url
         }
       } else if (form.contentType === 'video') {
         payload.contentJson = {}
@@ -98,6 +140,7 @@ export default function CreateDocumentModal({ sectors, categories, onSave, onClo
               className="glass-input w-full px-3 py-2"
               placeholder="Ex: POP-023: Curativos Especiais" required />
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Setor</label>
@@ -108,17 +151,46 @@ export default function CreateDocumentModal({ sectors, categories, onSave, onClo
             </div>
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Pasta</label>
-              <select value={form.categoryId} onChange={e => setForm(f => ({ ...f, categoryId: parseInt(e.target.value) }))}
+              <select value={form.categoryId} onChange={e => handleCategoryChange(parseInt(e.target.value))}
                 className="glass-input w-full px-3 py-2">
                 <option value={0}>Sem pasta</option>
                 {filteredCats.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.parentId ? '    └ ' : <><FolderOpen size={14} className="inline" /> </>}{c.name}
+                    {c.parentId ? '    └ ' : ''}{c.name}
                   </option>
                 ))}
               </select>
             </div>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Resumo</label>
+            <textarea value={form.summary} onChange={e => setForm(f => ({ ...f, summary: e.target.value }))}
+              className="glass-input w-full px-3 py-2 text-sm" rows={2}
+              placeholder="Breve descrição do documento..." />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Imagem de capa</label>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer transition-colors text-sm"
+                style={{ background: 'var(--glass-bg)', color: 'var(--text-secondary)' }}>
+                <Upload size={16} />
+                {imagePreview ? 'Trocar imagem' : 'Upload imagem'}
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageSelect} className="hidden" />
+              </label>
+              {imagePreview && (
+                <div className="relative">
+                  <img src={imagePreview} alt="Preview" className="h-16 w-24 object-cover rounded-lg" />
+                  <button type="button" onClick={() => { setImageFile(null); setImagePreview(null) }}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs bg-red-500 text-white">
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Tipo de Conteúdo</label>
             <div className="flex gap-4 mb-3">
@@ -141,8 +213,7 @@ export default function CreateDocumentModal({ sectors, categories, onSave, onClo
                 <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Selecione o arquivo PDF</p>
                 <input type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files?.[0] || null)}
                   className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium"
-                  style={{ color: 'var(--text-secondary)' }}
-                  onMouseEnter={e => { /* file input styling */ }} />
+                  style={{ color: 'var(--text-secondary)' }} />
               </div>
             )}
             {form.contentType === 'video' && (
@@ -151,9 +222,11 @@ export default function CreateDocumentModal({ sectors, categories, onSave, onClo
                 className="glass-input w-full px-3 py-2 text-sm" />
             )}
           </div>
+
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
-            <button type="submit" disabled={submitting} className="btn-primary flex-1">{submitting ? 'Criando...' : 'Criar Documento'}</button>
+            <button type="submit" disabled={submitting}
+              className="btn-primary flex-1">{submitting ? 'Criando...' : 'Criar Documento'}</button>
           </div>
         </form>
       </div>

@@ -19,6 +19,8 @@ const createSchema = z.object({
   title: z.string().min(3, 'Título deve ter no mínimo 3 caracteres'),
   contentType: z.enum(['rich-text', 'pdf', 'video']).optional().default('rich-text'),
   contentUrl: z.string().max(500).optional(),
+  imageUrl: z.string().max(500).optional(),
+  summary: z.string().max(500).optional(),
   contentJson: z.any().optional().default({}),
   sectorId: z.number().int().positive(),
   categoryId: z.number().int().positive().optional(),
@@ -29,9 +31,10 @@ router.get('/', asyncHandler(async (req: AuthRequest, res) => {
     ? (req.query.sectorId ? parseInt(req.query.sectorId as string) : undefined)
     : req.user!.sectorId
   const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined
+  const search = req.query.search as string || undefined
   const page = Math.max(1, parseInt(req.query.page as string) || 1)
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50))
-  const result = await docService.listDocuments(sectorId, categoryId, page, limit)
+  const result = await docService.listDocuments(sectorId, categoryId, page, limit, search)
   res.json(result)
 }))
 
@@ -67,6 +70,8 @@ const updateSchema = z.object({
   title: z.string().min(3).optional(),
   contentType: z.enum(['rich-text', 'pdf', 'video']).optional(),
   contentUrl: z.string().max(500).optional(),
+  imageUrl: z.string().max(500).nullable().optional(),
+  summary: z.string().max(500).nullable().optional(),
   contentJson: z.any().optional(),
 })
 

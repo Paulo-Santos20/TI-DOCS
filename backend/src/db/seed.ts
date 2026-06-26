@@ -2,7 +2,6 @@ import 'dotenv/config'
 import bcrypt from 'bcryptjs'
 import { db, connection } from '../config/database'
 import { sectors, users, systemConfigs } from './schema'
-import { eq } from 'drizzle-orm'
 import logger from '../config/logger'
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@tidocs.com'

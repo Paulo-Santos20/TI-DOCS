@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, timestamp, boolean, jsonb, text, uniqueIndex, index, foreignKey } from 'drizzle-orm/pg-core'
+import { pgTable, serial, varchar, integer, timestamp, boolean, jsonb, text, uniqueIndex, index } from 'drizzle-orm/pg-core'
 
 export const UserRole = ['admin', 'user'] as const
 export const DocumentStatus = ['draft', 'review', 'published', 'archived'] as const
@@ -57,6 +57,8 @@ export const documents = pgTable('documents', {
   contentJson: jsonb('content_json').notNull().default({}),
   contentType: varchar('content_type', { length: 20 }).notNull().default('rich-text'),
   contentUrl: varchar('content_url', { length: 500 }),
+  imageUrl: varchar('image_url', { length: 500 }),
+  summary: varchar('summary', { length: 500 }),
   sectorId: integer('sector_id').references(() => sectors.id).notNull(),
   authorId: integer('author_id').references(() => users.id).notNull(),
   categoryId: integer('category_id').references(() => documentCategories.id),

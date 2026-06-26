@@ -10,7 +10,7 @@ import { TableSkeleton } from '../components/ui/Skeleton'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
 import { ArrowLeft, Folder, Book, CheckCircle } from 'lucide-react'
 
-interface Doc { id: number; title: string; contentJson: any; contentType?: string; contentUrl?: string; status: string; version: number; sectorId: number; categoryId?: number | null; updatedAt: string }
+interface Doc { id: number; title: string; contentJson: any; contentType?: string; contentUrl?: string; imageUrl?: string | null; summary?: string | null; status: string; version: number; sectorId: number; categoryId?: number | null; updatedAt: string }
 interface Category { id: number; name: string; parentId: number | null; sectorId: number | null }
 interface Sector { id: number; name: string }
 
@@ -49,7 +49,7 @@ export default function DocumentView() {
     catch { addToast('Erro ao alterar status', 'error') }
   }
 
-  const handleEditSave = async (data: { title: string; contentType?: string; contentUrl?: string; contentJson: any; categoryId?: number }) => {
+  const handleEditSave = async (data: { title: string; contentType?: string; contentUrl?: string; imageUrl?: string | null; summary?: string | null; contentJson: any; categoryId?: number }) => {
     try { await api.put(`/documents/${id}`, data); addToast('Documento atualizado', 'success'); setShowEditModal(false); loadDoc() }
     catch (e: any) { addToast(e.response?.data?.error || 'Erro ao atualizar', 'error') }
   }
@@ -125,6 +125,17 @@ export default function DocumentView() {
           )}
         </div>
       </div>
+
+      {doc.summary && (
+        <div className="card p-4 mb-6">
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{doc.summary}</p>
+        </div>
+      )}
+      {doc.imageUrl && (
+        <div className="mb-6 rounded-xl overflow-hidden max-h-64">
+          <img src={doc.imageUrl} alt={doc.title} className="w-full h-full object-cover" />
+        </div>
+      )}
 
       <div className="card min-h-[300px]">
         {doc.contentType === 'pdf' && doc.contentUrl ? (

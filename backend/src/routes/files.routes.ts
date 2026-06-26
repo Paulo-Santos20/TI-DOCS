@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authMiddleware, requireRole } from '../middleware'
 import { asyncHandler } from '../lib/async-handler'
-import { upload, streamFile } from '../services/file.service'
+import { upload, uploadImage, streamFile } from '../services/file.service'
 import { db } from '../config/database'
 import { documents } from '../db/schema'
 import { eq } from 'drizzle-orm'
@@ -15,6 +15,17 @@ router.use(authMiddleware)
 router.post('/upload', requireRole('admin'), upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) throw new AppError(400, 'Nenhum arquivo enviado')
   await notifyAllAdmins('system', `Arquivo enviado: "${req.file.originalname}"`, `/api/files/${req.file.filename}`)
+  res.json({
+    filename: req.file.filename,
+    originalName: req.file.originalname,
+    size: req.file.size,
+    mimetype: req.file.mimetype,
+    url: `/api/files/${req.file.filename}`,
+  })
+}))
+
+router.post('/upload-image', requireRole('admin'), uploadImage.single('image'), asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError(400, 'Nenhuma imagem enviada')
   res.json({
     filename: req.file.filename,
     originalName: req.file.originalname,

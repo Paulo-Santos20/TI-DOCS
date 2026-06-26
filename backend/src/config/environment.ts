@@ -22,7 +22,7 @@ export const env = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '15m',
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   OLLAMA_URL: process.env.OLLAMA_URL || 'http://localhost:11434',
-  OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'phi3.5:mini',
+  OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'phi3:mini',
   PORT: parseIntSafe(process.env.PORT, 3001),
   NODE_ENV: process.env.NODE_ENV || 'development',
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',

@@ -3,7 +3,7 @@ import api from '../lib/api'
 import { disconnectSocket } from '../lib/socket'
 
 export interface User {
-  id: number; name: string; email: string; role: 'admin' | 'user'; sectorId: number; avatarUrl?: string
+  id: number; name: string; email: string; role: 'admin' | 'user'; sectorId: number; positionId?: number | null; positionName?: string | null; avatarUrl?: string
 }
 
 interface AuthContextType {

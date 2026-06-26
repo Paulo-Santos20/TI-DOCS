@@ -17,7 +17,8 @@ export async function listUsers(sectorId?: number, page = 1, limit = 50, include
 
   const data = await db.select({
     id: users.id, name: users.name, email: users.email,
-    role: users.role, sectorId: users.sectorId, isActive: users.isActive,
+    role: users.role, sectorId: users.sectorId,
+    isActive: users.isActive,
     sectorName: sectors.name, createdAt: users.createdAt,
   }).from(users).leftJoin(sectors, eq(users.sectorId, sectors.id))
     .where(conditions || undefined)
@@ -29,7 +30,8 @@ export async function listUsers(sectorId?: number, page = 1, limit = 50, include
 export async function getUser(id: number) {
   const [user] = await db.select({
     id: users.id, name: users.name, email: users.email,
-    role: users.role, sectorId: users.sectorId, isActive: users.isActive,
+    role: users.role, sectorId: users.sectorId,
+    isActive: users.isActive,
     sectorName: sectors.name, createdAt: users.createdAt,
   }).from(users).leftJoin(sectors, eq(users.sectorId, sectors.id))
     .where(and(eq(users.id, id), notDeleted())).limit(1)

@@ -13,7 +13,7 @@ const AI_ERROR = {
   TIMEOUT: 'IA não respondeu a tempo. Tente novamente.',
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15000) {
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 60000) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -45,7 +45,7 @@ export async function askPhi(prompt: string): Promise<string> {
       model: env.OLLAMA_MODEL,
       prompt,
       stream: false,
-      options: { num_predict: 512, temperature: 0.1 },
+      options: { num_predict: 256, temperature: 0.1 },
     }),
   })
 

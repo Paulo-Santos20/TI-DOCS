@@ -28,11 +28,14 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const Profile = lazy(() => import('./pages/Profile'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
+const USER_RESTRICTED = ['/modelos', '/relatorios', '/notificacoes'] as const
+
 function ProtectedRoute({ children, requireRole }: { children: React.ReactNode; requireRole?: string }) {
   const { user, loading } = useAuth()
   if (loading) return <LoadingSpinner />
   if (!user) return <Navigate to="/login" replace />
   if (requireRole && user.role !== requireRole) return <Navigate to="/" replace />
+  if (user.role !== 'admin' && USER_RESTRICTED.includes(window.location.pathname as any)) return <Navigate to="/" replace />
   return <>{children}</>
 }
 

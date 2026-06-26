@@ -30,6 +30,7 @@ import searchRoutes from './routes/search.routes'
 import seedRoutes from './routes/seed.routes'
 import reportRoutes from './routes/reports.routes'
 import healthRoutes from './routes/health.routes'
+import trilhaRoutes from './routes/trilhas.routes'
 import swaggerUi from 'swagger-ui-express'
 import { swaggerSpec } from './config/swagger'
 import { setupSocket } from './socket'
@@ -76,6 +77,7 @@ app.use('/api/profile', profileRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/search', searchLimiter, searchRoutes)
+app.use('/api/trilhas', trilhaRoutes)
 app.use('/api/seed', seedRoutes)
 app.use('/api/reports', reportRoutes)
 

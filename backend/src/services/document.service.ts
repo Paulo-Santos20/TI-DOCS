@@ -1,13 +1,19 @@
 import { db } from '../config/database'
-import { documents, documentVersions, sectors, documentCategories } from '../db/schema'
+import { documents, documentVersions, sectors, documentCategories, users } from '../db/schema'
 import { AppError } from '../middleware/error.middleware'
-import { eq, desc, sql, and, isNull } from 'drizzle-orm'
+import { eq, desc, sql, and, isNull, ilike, or, inArray } from 'drizzle-orm'
 
 function notDeleted() { return isNull(documents.deletedAt) }
 
-export async function listDocuments(sectorId?: number, categoryId?: number, page = 1, limit = 50) {
+export async function listDocuments(sectorId?: number, categoryId?: number, page = 1, limit = 50, search?: string) {
   const offset = (page - 1) * limit
-  const conditions = and(notDeleted(), eq(documents.isTemplate, false), sectorId ? eq(documents.sectorId, sectorId) : undefined, categoryId ? eq(documents.categoryId, categoryId) : undefined)
+  const conditions = and(
+    notDeleted(),
+    eq(documents.isTemplate, false),
+    sectorId ? eq(documents.sectorId, sectorId) : undefined,
+    categoryId ? eq(documents.categoryId, categoryId) : undefined,
+    search ? ilike(documents.title, `%${search}%`) : undefined,
+  )
   const [countResult] = await db.select({ count: sql<number>`count(*)::int` })
     .from(documents)
     .where(conditions)
@@ -18,6 +24,8 @@ export async function listDocuments(sectorId?: number, categoryId?: number, page
     sectorName: sectors.name, categoryId: documents.categoryId,
     categoryName: documentCategories.name,
     contentType: documents.contentType,
+    imageUrl: documents.imageUrl,
+    summary: documents.summary,
     authorId: documents.authorId,
     updatedAt: documents.updatedAt, createdAt: documents.createdAt,
   }).from(documents).leftJoin(sectors, eq(documents.sectorId, sectors.id))
@@ -30,18 +38,34 @@ export async function listDocuments(sectorId?: number, categoryId?: number, page
 }
 
 export async function getDocument(id: number) {
-  const [doc] = await db.select().from(documents).where(and(eq(documents.id, id), notDeleted())).limit(1)
+  const [doc] = await db.select({
+    id: documents.id, title: documents.title, contentJson: documents.contentJson,
+    contentType: documents.contentType, contentUrl: documents.contentUrl,
+    imageUrl: documents.imageUrl, summary: documents.summary,
+    status: documents.status, version: documents.version,
+    sectorId: documents.sectorId, categoryId: documents.categoryId,
+    authorId: documents.authorId, isTemplate: documents.isTemplate,
+    templateForSectorId: documents.templateForSectorId,
+    reviewedBy: documents.reviewedBy, reviewedAt: documents.reviewedAt,
+    isEditing: documents.isEditing, editingBy: documents.editingBy,
+    editingExpiresAt: documents.editingExpiresAt,
+    deletedAt: documents.deletedAt,
+    updatedAt: documents.updatedAt, createdAt: documents.createdAt,
+  }).from(documents)
+    .where(and(eq(documents.id, id), notDeleted())).limit(1)
   if (!doc) throw new AppError(404, 'Documento não encontrado')
   return doc
 }
 
 export async function createDocument(data: {
-  title: string; contentJson?: any; contentType?: string; contentUrl?: string; sectorId: number; authorId: number; categoryId?: number
+  title: string; contentJson?: any; contentType?: string; contentUrl?: string; imageUrl?: string; summary?: string; sectorId: number; authorId: number; categoryId?: number
 }) {
   const [doc] = await db.insert(documents).values({
     title: data.title, contentJson: data.contentJson || {},
     contentType: data.contentType || 'rich-text',
     contentUrl: data.contentUrl || null,
+    imageUrl: data.imageUrl || null,
+    summary: data.summary || null,
     sectorId: data.sectorId, authorId: data.authorId,
     categoryId: data.categoryId,
     status: 'draft',
@@ -101,7 +125,7 @@ export async function releaseLock(docId: number) {
 }
 
 export async function updateDocument(docId: number, data: {
-  title?: string; contentType?: string; contentUrl?: string; contentJson?: any; categoryId?: number
+  title?: string; contentType?: string; contentUrl?: string; contentJson?: any; imageUrl?: string | null; summary?: string | null; categoryId?: number
   changeDescription?: string
 }, userId: number) {
   const [doc] = await db.select().from(documents).where(and(eq(documents.id, docId), notDeleted())).limit(1)
@@ -111,6 +135,8 @@ export async function updateDocument(docId: number, data: {
   if (data.title !== undefined) allowedFields.title = data.title
   if (data.contentType !== undefined) allowedFields.contentType = data.contentType
   if (data.contentUrl !== undefined) allowedFields.contentUrl = data.contentUrl
+  if (data.imageUrl !== undefined) allowedFields.imageUrl = data.imageUrl
+  if (data.summary !== undefined) allowedFields.summary = data.summary
   if (data.contentJson !== undefined) allowedFields.contentJson = data.contentJson
   if (data.categoryId !== undefined) allowedFields.categoryId = data.categoryId
 
@@ -149,6 +175,66 @@ export async function getVersions(docId: number) {
   return await db.select().from(documentVersions)
     .where(eq(documentVersions.documentId, docId))
     .orderBy(desc(documentVersions.version))
+}
+
+export async function listTrilhas(sectorId?: number) {
+  const rootCats = await db.select().from(documentCategories)
+    .where(and(
+      isNull(documentCategories.parentId),
+      sectorId ? eq(documentCategories.sectorId, sectorId) : undefined,
+    ))
+    .orderBy(documentCategories.name)
+
+  const rootIds = rootCats.map(c => c.id)
+  const children = rootIds.length
+    ? await db.select().from(documentCategories)
+        .where(inArray(documentCategories.parentId, rootIds))
+        .orderBy(documentCategories.name)
+    : []
+
+  const allCatIds = [...rootIds, ...children.map(c => c.id)]
+  const allDocs = allCatIds.length
+    ? await db.select({
+        id: documents.id, title: documents.title, status: documents.status,
+        version: documents.version, contentType: documents.contentType,
+        contentUrl: documents.contentUrl, imageUrl: documents.imageUrl,
+        summary: documents.summary,
+        sectorName: sectors.name, categoryId: documents.categoryId,
+        createdAt: documents.createdAt, updatedAt: documents.updatedAt,
+        authorName: users.name,
+      }).from(documents)
+        .leftJoin(sectors, eq(documents.sectorId, sectors.id))
+        .leftJoin(users, eq(documents.authorId, users.id))
+        .where(and(
+          isNull(documents.deletedAt),
+          eq(documents.isTemplate, false),
+          inArray(documents.categoryId, allCatIds),
+        ))
+        .orderBy(desc(documents.updatedAt))
+    : []
+
+  const docsByCat: Record<number, typeof allDocs> = {}
+  for (const d of allDocs) {
+    const cid = d.categoryId || 0
+    if (!docsByCat[cid]) docsByCat[cid] = []
+    docsByCat[cid].push(d)
+  }
+
+  return rootCats.map(cat => ({
+    ...cat,
+    documents: docsByCat[cat.id] || [],
+    children: children.filter(c => c.parentId === cat.id).map(child => ({
+      ...child,
+      documents: docsByCat[child.id] || [],
+    })),
+  }))
+}
+
+export async function getRootCategorySectorId(categoryId: number): Promise<number | null> {
+  const [cat] = await db.select().from(documentCategories).where(eq(documentCategories.id, categoryId)).limit(1)
+  if (!cat) return null
+  if (!cat.parentId) return cat.sectorId
+  return getRootCategorySectorId(cat.parentId)
 }
 
 export async function listCategories(sectorId?: number) {

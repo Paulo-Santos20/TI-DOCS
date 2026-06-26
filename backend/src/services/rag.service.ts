@@ -16,7 +16,7 @@ const AI_ERROR = {
   TIMEOUT: 'IA não respondeu a tempo. Tente novamente.',
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15000) {
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 60000) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
